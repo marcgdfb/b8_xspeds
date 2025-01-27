@@ -2,12 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 import itertools
-from scipy.stats import logistic
 
+# The following code was provided by Sam Vinko, University of Oxford:
 
 # Name of the hdf file that contains the data we need
 f_name = 'sxro6416-r0504.h5'
-
 # Open the hdf5 file, use the path to the images to extract the data and place
 # it in the image data object for further manipulation and inspection.
 datafile = h5py.File(f_name, 'r')
@@ -19,9 +18,10 @@ for i in itertools.count(start=0):
         image_data.append(d[0])
     else:
         break
-
 # Tell me how many images were contained in the datafile
 print(f"Loaded {len(image_data)} images.")
+
+# End of code provided
 
 class Investigate():
 
@@ -80,13 +80,13 @@ def investigateImageData(index):
 #     print(num)
 #     Investigate.showImageAndHist(num)
 
-num = 8
-arr = image_data[8]
-arr_large = arr.astype(np.int64)
-
-arr_sum = sum(arr_large.flatten())
-
-print(arr[0,1])
+# num = 8
+# arr = image_data[8]
+# arr_large = arr.astype(np.int64)
+#
+# arr_sum = sum(arr_large.flatten())
+#
+# print(arr[0,1])
 # Investigate.showImageAndHist(num,200)
 # Investigate.showImageIntensityHigherThan(num,100)
 

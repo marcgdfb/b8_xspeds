@@ -1,5 +1,8 @@
+import random
+
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 from tools import *
 
@@ -31,15 +34,50 @@ def generate_spectrum(energy_start_eV=1090,energy_end_eV=1610,step=0.5,
         else:
             count_energy.append(np.random.randint(40, 50))
 
-    sns.lineplot(x=range_energy,y=count_energy)
+    df_spectrum = pd.DataFrame({'Energy': range_energy, 'Count': count_energy})
+
+    sns.lineplot(data=df_spectrum, x="Energy",y="Count")
     plt.show()
+
+
 
 
 # generate_spectrum()
 
 class Simulation:
-    def __init__(self):
+    def __init__(self,df_spectrum):
+        self.df = df_spectrum
         self.photon_hit = None
+
+
+
+
+
+    class Bragg:
+
+        @staticmethod
+        def randomPixel(energy_eV):
+            """
+            For a given energy there is a range of x y pixels that are allowed
+            """
+
+            theta = bragg_E_to_theta(energy_eV)
+            phi_half = phiHalf(energy_eV)
+
+            phi_val = random.uniform(-phi_half,phi_half)
+
+            arrPixels = theta_phi_to_xy_observation(theta=theta,phi=phi_val)
+            yPixel = arrPixels[0]
+            xPixel = arrPixels[1]
+
+            return xPixel,yPixel
+
+
+        def createSimpleBraggImage(self):
+
+
+
+
 
 
 

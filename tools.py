@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 
 from constants import *
@@ -28,6 +29,7 @@ def bragg_theta_to_E(theta_rad, d=d_beryl):
 # geometric setup
 
 # checked with sketchup
+# TODO: Use the known emission lines to improve understanding of where the crystal is
 def height_source_detector(E_min_detector=E_min_eV,E_max_detector=E_max_eV,l_sep=length_detector):
 
     t1 = np.tan(bragg_E_to_theta(E_min_detector))
@@ -38,10 +40,10 @@ def height_source_detector(E_min_detector=E_min_eV,E_max_detector=E_max_eV,l_sep
 
     return h
 
-def radius_of_energy(energy_eV):
+def radius_of_energy(energy_eV,E_min_detector=E_min_eV,E_max_detector=E_max_eV,l_sep=length_detector):
 
     theta = bragg_E_to_theta(energy_eV)
-    return height_source_detector()/np.tan(theta)
+    return height_source_detector(E_min_detector,E_max_detector,l_sep)/np.tan(theta)
 
 def energy_of_radius(radius_metres):
 
@@ -119,7 +121,7 @@ def xypixel_observationPlane_to_energy(x_pixel,y_pixel,
     return E_center, E_upperLim, E_lowerLim
 
 
-print(xypixel_observationPlane_to_energy(1023,1023))
+# print(xypixel_observationPlane_to_energy(1023,1023))
 
 
 
@@ -127,6 +129,22 @@ print(xypixel_observationPlane_to_energy(1023,1023))
 # the phi will assume an isotropic distribution that will mean sin(theta)
 # * change in phi / 2 pi is the relative proportion which is then multiplied by
 # the intensity of the spectrum for the simulation
+
+def phiHalf(energy_eV, widthDetector=length_detector):
+    """
+    For a given energy, by virtue of the geometry, there is a range of phi values
+    that are possible. I will take this to be measured from the optical axis such
+    that there are values between - phi_half(E) and + phi_half(E) to make a total
+    of phi(E)
+
+    """
+    radius = radius_of_energy(energy_eV=energy_eV)
+
+    # Finding allowed phi range
+    phi_half = np.arcsin((widthDetector / 2) / radius)
+    return phi_half
+
+
 
 def theta_phi_to_xy_observation(theta,phi,
                                 r_edge=radius_of_energy(E_min_eV),
@@ -151,6 +169,29 @@ def theta_phi_to_xy_observation(theta,phi,
     return np.array([difference_y_pixels,difference_x_pixels])
 
 # proportion of phi think d theta sin theta d phi / 4pi
+
+def solidAngleNormalisation(energy_eV,widthDetector=length_detector):
+    """
+    For a given value of energy we have an associated radius and angle and hence
+    can compute the fractional normalisation. The true count is the count incident
+    on the detector / this fractional normalisation
+
+    This factor is given by (2 * phi * sin(theta)) / (4 pi)
+    """
+    # Given a value of radius r, due to the size of the CCD each radius has a different range of
+    # phi that it is allowed 2 phi sin theta / 4 pi
+
+    radius = radius_of_energy(energy_eV=energy_eV)
+    theta = bragg_E_to_theta(energy_eV)
+
+    # Finding allowed phi range
+    phi = 2 * np.arcsin( (widthDetector/2) / radius)
+
+    fractional_normalisation = (2*phi * np.sin(theta)) / (4 * np.pi)
+
+    return fractional_normalisation
+
+
 
 
 def cartesian_to_spherical(r_cart):
