@@ -80,13 +80,9 @@ def investigateImageData(index):
 #     print(num)
 #     Investigate.showImageAndHist(num)
 
-# num = 8
-# arr = image_data[8]
-# arr_large = arr.astype(np.int64)
-#
-# arr_sum = sum(arr_large.flatten())
-#
-# print(arr[0,1])
+num = 8
+array8Test = image_data[8]
+
 # Investigate.showImageAndHist(num,200)
 # Investigate.showImageIntensityHigherThan(num,100)
 

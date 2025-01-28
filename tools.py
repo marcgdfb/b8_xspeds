@@ -40,6 +40,8 @@ def height_source_detector(E_min_detector=E_min_eV,E_max_detector=E_max_eV,l_sep
 
     return h
 
+print(height_source_detector())
+
 def radius_of_energy(energy_eV,E_min_detector=E_min_eV,E_max_detector=E_max_eV,l_sep=length_detector):
 
     theta = bragg_E_to_theta(energy_eV)
@@ -193,11 +195,12 @@ def solidAngleNormalisation(energy_eV,widthDetector=length_detector):
 
 
 
+# Geometry
 
 def cartesian_to_spherical(r_cart):
     """
-    Inputs: list r with x,y,z coordinates in metres
-    returns r,theta and phi that define this point in spherical coordinates
+    Inputs: numpy array r_cart with x,y,z coordinates in metres
+    returns r (m),theta and phi (both rad) that defines this point in spherical coordinates
     """
     xsqr_plus_ysqr = r_cart[0]**2 + r_cart[1]**2
     r = np.sqrt( xsqr_plus_ysqr + r_cart[2]**2)
@@ -207,7 +210,97 @@ def cartesian_to_spherical(r_cart):
     return np.array([r,theta,phi])
 
 def spherical_to_cartesian(r_spherical):
-    """"""
+    """
+    Inputs: numpy array r_spherical with r,tgeta,phi coordinates in metres and radians respectively
+    returns x,y,z (m) that defines this point in cartesian coordinates
+    """
+    r = r_spherical[0]
+    theta = r_spherical[1]
+    phi = r_spherical[2]
+
+    x = r * np.sin(theta) * np.cos(phi)
+    y = r * np.sin(theta) * np.sin(phi)
+    z = r * np.cos(theta)
+
+    return np.array([x,y,z])
+
+
+def Rotation_matrix(n_vector, n_final=np.array([0,0,1])):
+    """
+    Takes a vector n_vector and finds the matrix to rotate it to n_final
+    which is taken normally to be the z axis
+    """
+
+    n_v = n_vector / np.linalg.norm(n_vector)
+    n_f = n_final / np.linalg.norm(n_final)
+
+    if np.array_equal(n_v,n_f):
+        # print("The two vectors are the same")
+        return np.eye(3)
+    elif np.array_equal(n_v,-n_f):
+        # print("The two vectors are the 180 degree rotations of one another")
+        return -np.eye(3)
+    else:
+        axisRot = np.cross(n_v,n_f)
+        axis_R = axisRot / np.linalg.norm(axisRot)
+
+        thetaRot = np.arccos(np.dot(n_v,n_f))
+
+        # It can be shown using linear algebra that a rotation matrix is given by
+        # Identity Matrix + (1- cos(theta))(axis_rot dot J matrix)^2 + sin(theta) (axis_rot dot J matrix)
+        # J is a vector with the different directions of rotation matrices encoded within it
+
+        udotJ = np.array([
+            [0, -axis_R[2], axis_R[1]],
+            [axis_R[2],0,-axis_R[0]],
+            [-axis_R[1],axis_R[0],0]
+        ])
+
+
+        RotMat = np.eye(3) + (1-np.cos(thetaRot)) * np.dot(udotJ,udotJ) + np.sin(thetaRot) * udotJ
+
+        return RotMat
+
+
+
+
+def inverseRotation_matrix(n_vector, n_final=np.array([0,0,1])):
+    """
+    Takes a vector n_vector and finds the matrix to rotate it to n_final
+    which is taken normally to be the z axis
+    """
+
+    n_v = n_vector / np.linalg.norm(n_vector)
+    n_f = n_final / np.linalg.norm(n_final)
+
+    if np.array_equal(n_v,n_f):
+        # print("The two vectors are the same")
+        return np.eye(3)
+    elif np.array_equal(n_v,-n_f):
+        # print("The two vectors are the 180 degree rotations of one another")
+        return -np.eye(3)
+
+    axisRot = np.cross(n_v,n_f)
+    axis_R = axisRot / np.linalg.norm(axisRot)
+
+    thetaRot = np.arccos(np.dot(n_v,n_f))
+
+    # It can be shown using linear algebra that a rotation matrix is given by
+    # Identity Matrix + (1- cos(theta))(axis_rot dot J matrix)^2 + sin(theta) (axis_rot dot J matrix)
+    # J is a vector with the different directions of rotation matrices encoded within it
+
+    udotJ = np.array([
+        [0, -axis_R[2], axis_R[1]],
+        [axis_R[2],0,-axis_R[0]],
+        [-axis_R[1],axis_R[0],0]
+    ])
+
+    # As we're looking for the rotation matrix in inverse take -thetaRot:
+
+    inverseRot = np.eye(3) + (1-np.cos(thetaRot)) * np.dot(udotJ,udotJ) + np.sin(-thetaRot) * udotJ
+
+    return inverseRot
+
 
 
 class Visualise:

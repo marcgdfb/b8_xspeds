@@ -6,6 +6,13 @@ import pandas as pd
 import seaborn as sns
 from tools import *
 
+"""
+Spectrum produced by plasma
+-> deflection probability on crystal?
+-> solid angle contributions
+-> Fano factor + absorbtion probability in silicon / CCD
+"""
+
 def generate_spectrum(energy_start_eV=1090,energy_end_eV=1610,step=0.5,
                       energy_peaks_eV=None):
     """
@@ -73,9 +80,12 @@ class Simulation:
             return xPixel,yPixel
 
 
-        def createSimpleBraggImage(self):
 
 
+
+phi_half = phiHalf(E_Lalpha_eV)
+
+print(phi_half)
 
 
 
