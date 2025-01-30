@@ -1,3 +1,5 @@
+#%%
+
 import numpy as np
 from scipy.optimize import minimize
 
@@ -5,11 +7,15 @@ from getImageData import *
 from tools import *
 
 
+n_crytest = np.array([0,0,1])
+n_cam_test = np.array([0,0,1])
+r_cam_spher_test = np.array([0.07, 1.8507963267948966, np.pi])
+
 class GeometryCalibration:
     def __init__(self,
                  xpixels = 2048, ypixels = 2048, pixelWidth=pixel_width,
                  n_crystal=np.array([0, 0, 1]),
-                 n_camera=np.array([0.1, 0, 1]),
+                 n_camera=np.array([0.2, 0, 1]),
                  r_camera_spherical=np.array([0.06, np.pi/2+0.3, np.pi]),
                  ):
         self.xpixels = xpixels
@@ -106,8 +112,8 @@ class GeometryCalibration:
             )
 
         print("num points",sum(matrix_test.flatten()))
-        if int(sum(matrix_test.flatten())) == 0:
-            raise ValueError
+        # if int(sum(matrix_test.flatten())) == 0:
+        #     raise ValueError
 
         # matdif = (imageMatrix - matrix_test)**2
         # loss = sum(matdif.flatten())
@@ -122,6 +128,7 @@ class GeometryCalibration:
             # plt.show()
             # Raw with curve
             matTest = np.where(matrix_test > 0, 50, 0)
+
             plt.imshow(matTest + imageMatrix, cmap="hot", )
             plt.show()
 
@@ -175,8 +182,10 @@ def optimiseGeometry(imageMatrix):
 
     initialGuess = np.array([0,0,1,0,0,1,0.06,np.pi / 2 + 0.3])
 
-    # TODO: Add bounds
-    bounds = [(None, None)] * 6 + [(0, None), (0, 2 * np.pi)]
+    bounds = [(-0.01, 0.01),(-0.01, 0.01),(0.95, 1.1),
+          (0, 0.2),(-0.1, 0.1),(0.7, 1),
+          (0.07, 0.1),(np.pi/2+0.28, np.pi/2+0.32)
+          ]
     # Perform optimization
     result = minimize(lossFunction, initialGuess,bounds=bounds, method='Nelder-Mead',options={'maxiter': 30})
 
@@ -198,15 +207,18 @@ def optimiseGeometry(imageMatrix):
     geo.computeGeometry_loss(imageMatrix=imageMatrix,printImage=True)
 
 
-# optimiseGeometry(covTest)
+# optimiseGeometry(high_intensity_points)
 
-geo = GeometryCalibration(n_crystal=np.array([0, 0, 1]),
-                 n_camera=np.array([0, 0, 1]),
-                 r_camera_spherical=np.array([0.06, np.pi/2+0.3, np.pi]))
+
+print("n_crys",n_crytest)
+print("n_cam",n_cam_test)
+print("r_cam",r_cam_spher_test)
+
+geo = GeometryCalibration(n_crystal = n_crytest,
+                 n_camera = n_cam_test,
+                 r_camera_spherical= r_cam_spher_test)
 geo.computeGeometry_loss(array8Test,True)
 
-bounds = [(None, None),(None, None),(None, None),
-          (None, None),(None, None),(None, None),
-          (None, None),(None, None)
-          ]
 
+
+# %%

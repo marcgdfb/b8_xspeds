@@ -87,12 +87,12 @@ num = 8
 array8Test = image_data[8]
 high_intensity_points = np.where(array8Test > 100, array8Test, 0)
 
-imTensor = convolvedImage(high_intensity_points)
+# imTensor = convolvedImage(high_intensity_points)
 # imTensor = convolvedImage(array8Test)
-covTest = np.asarray(imTensor)
-covTest = np.where(covTest > 0,1,0)
-# plt.imshow(covTest,cmap="hot")
-# plt.show()
+# covTest = np.asarray(imTensor)
+# covTest = np.where(covTest > 0,1,0)
+plt.imshow(high_intensity_points,cmap="hot")
+plt.show()
 # print(sum(covTest.flatten()))
 
 
