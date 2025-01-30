@@ -40,7 +40,7 @@ def height_source_detector(E_min_detector=E_min_eV,E_max_detector=E_max_eV,l_sep
 
     return h
 
-print(height_source_detector())
+# print(height_source_detector())
 
 def radius_of_energy(energy_eV,E_min_detector=E_min_eV,E_max_detector=E_max_eV,l_sep=length_detector):
 

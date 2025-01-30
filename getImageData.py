@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 import itertools
-
+import torch
+from torch.nn import AvgPool2d
 # The following code was provided by Sam Vinko, University of Oxford:
 
 # Name of the hdf file that contains the data we need
@@ -50,11 +51,11 @@ class Investigate():
 
 
     @staticmethod
-    def showImageIntensityHigherThan(index,intensity_max=100):
+    def showImageIntensityHigherThan(index, intensity_min=100):
         # Plot a good dataset - here index #8 (but there are others too!)
 
         arr = image_data[index]
-        high_intensity_points = np.where(arr > intensity_max, arr, np.nan)
+        high_intensity_points = np.where(arr > intensity_min, arr, np.nan)
         plt.imshow(high_intensity_points)
         plt.colorbar(label="Intensity")
         plt.title(f"Image {index}") 
@@ -75,13 +76,26 @@ def investigateImageData(index):
     arr = image_data[index]
     print(arr.shape)
 
-
+def convolvedImage(imageMatrix):
+    pool = AvgPool2d(kernel_size=(5,3), padding=(2,1), stride=1)
+    return pool(torch.tensor(imageMatrix, dtype=torch.float32).unsqueeze(0).unsqueeze(0)).reshape(2048, 2048)
 # for num in range(0,len(image_data)):
 #     print(num)
 #     Investigate.showImageAndHist(num)
 
 num = 8
 array8Test = image_data[8]
+high_intensity_points = np.where(array8Test > 100, array8Test, 0)
+
+imTensor = convolvedImage(high_intensity_points)
+# imTensor = convolvedImage(array8Test)
+covTest = np.asarray(imTensor)
+covTest = np.where(covTest > 0,1,0)
+# plt.imshow(covTest,cmap="hot")
+# plt.show()
+# print(sum(covTest.flatten()))
+
+
 
 # Investigate.showImageAndHist(num,200)
 # Investigate.showImageIntensityHigherThan(num,100)
