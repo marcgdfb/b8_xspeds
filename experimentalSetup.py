@@ -7,9 +7,9 @@ from getImageData import *
 from tools import *
 
 
-n_crytest = np.array([0,0,1])
-n_cam_test = np.array([0,0,1])
-r_cam_spher_test = np.array([0.07, 1.8507963267948966, np.pi])
+n_crytest = np.array([3.33236883e-05, -9.42804784e-05,1])
+n_cam_test = np.array([1.27941744e-04 ,6.97820216e-05,1])
+r_cam_spher_test = np.array([0.05984086, 1.87545166, np.pi])
 
 class GeometryCalibration:
     def __init__(self,
@@ -46,11 +46,12 @@ class GeometryCalibration:
         The value of n_camera and r_camera then come into play
         """
 
-        # print("ncam",self.nCam)
-        # print("rcam_spherical",self.r_cam_spherical)
-        # print("rcam", self.r_cam)
-        # print("nCrystal", self.nCrystal)
-        maxValImage = max(imageMatrix.flatten())
+        print("ncam",self.nCam)
+        print("rcam_spherical",self.r_cam_spherical)
+        print("rcam", self.r_cam)
+        print("nCrystal", self.nCrystal)
+        # maxValImage = max(imageMatrix.flatten())
+        maxValImage = 1
 
         rotMatrix_cry = inverseRotation_matrix(self.nCrystal)
 
@@ -61,7 +62,8 @@ class GeometryCalibration:
 
         # The allowed directional vectors in spherical coordinate are then (1,theta, [0,2 pi])
 
-        df_xyToSum = []
+        df_alpha_xyToSum = []
+        df_beta_xyToSum = []
         count = 0
         for phi in np.arange(0, 2*np.pi, 0.0001):
             count += 1
@@ -80,26 +82,26 @@ class GeometryCalibration:
             x_planeA, y_planeA = self.ray_in_planeCamera(v_ray=v_ray_alpha)
             x_planeB, y_planeB = self.ray_in_planeCamera(v_ray=v_ray_beta)
 
-            if ((abs(x_planeA) < (self.xWidth-self.pixelWidth)/2).all() and
-                    (abs(x_planeB) < (self.xWidth-self.pixelWidth)/2).all() and
-                    (abs(y_planeA) < (self.yWidth-self.pixelWidth)/2).all() and
-                    (abs(y_planeB) < (self.yWidth-self.pixelWidth)/2).all()):
-                # print(x_planeA / self.pixelWidth, y_planeA / self.pixelWidth)
-                df_xyToSum.append([x_planeA, y_planeA,x_planeB, y_planeB])
+            if ((abs(x_planeA) < (self.xWidth - self.pixelWidth) / 2).all() and
+                    (abs(y_planeA) < (self.yWidth - self.pixelWidth) / 2).all()):
+                df_alpha_xyToSum.append([x_planeA, y_planeA,x_planeB, y_planeB])
+
+            if ((abs(x_planeB) < (self.xWidth - self.pixelWidth) / 2).all() and
+                    (abs(y_planeB) < (self.yWidth - self.pixelWidth) / 2).all()):
+                df_beta_xyToSum.append([x_planeA, y_planeA, x_planeB, y_planeB])
 
         matrix_test = np.zeros((2048, 2048))
         loss = 0
         # print(df_xyToSum)
-        for row in df_xyToSum:
+        for rowAlpha,rowBeta in zip(df_alpha_xyToSum,df_beta_xyToSum):
 
             x_0 = - self.xWidth/2
             y_0 = + self.yWidth/2
 
-            x_pixelA = round((row[0]-x_0)/self.pixelWidth)
-            y_pixelA = round((y_0 - row[1])/self.pixelWidth)
-            x_pixelB = round((row[2] - x_0) / self.pixelWidth)
-            y_pixelB = round((y_0 - row[3]) / self.pixelWidth)
-
+            x_pixelA = round((rowAlpha[0]-x_0)/self.pixelWidth)
+            y_pixelA = round((y_0 - rowAlpha[1])/self.pixelWidth)
+            x_pixelB = round((rowBeta[2] - x_0) / self.pixelWidth)
+            y_pixelB = round((y_0 - rowBeta[3]) / self.pixelWidth)
 
             # print(y_pixelA, x_pixelA)
             matrix_test[y_pixelA, x_pixelA] = maxValImage
@@ -107,8 +109,7 @@ class GeometryCalibration:
             matrix_test[y_pixelB, x_pixelB] = maxValImage
 
             loss += (
-                (matrix_test[y_pixelA, x_pixelA] + imageMatrix[y_pixelA, x_pixelA])
-                + (matrix_test[y_pixelB, x_pixelB] + imageMatrix[y_pixelA, x_pixelA])
+                imageMatrix[y_pixelA, x_pixelA] + imageMatrix[y_pixelB, x_pixelB]
             )
 
         print("num points",sum(matrix_test.flatten()))
@@ -119,7 +120,6 @@ class GeometryCalibration:
         # loss = sum(matdif.flatten())
 
 
-        # TODO: find loss that can encourage fitting line without removing it.
         lossNeg = - loss
 
         if printImage:
@@ -166,58 +166,60 @@ class GeometryCalibration:
         return x_plane,y_plane
 
 
-def optimiseGeometry(imageMatrix):
+def optimiseGeometry(imageMatrix,iterations=30):
 
     def lossFunction(params):
 
         p = params
-        geo = GeometryCalibration(n_crystal=np.array([p[0], p[1], p[2]]),
-                 n_camera=np.array([p[3], p[4], p[5]]),
-                 r_camera_spherical=np.array([p[6], p[7], np.pi]))
+        geoClass = GeometryCalibration(n_crystal=np.array([p[0], p[1], 1]),
+                 n_camera=np.array([p[2], p[3], 1]),
+                 r_camera_spherical=np.array([p[4], p[5], np.pi]))
 
-        loss = geo.computeGeometry_loss(imageMatrix=imageMatrix)
+        loss = geoClass.computeGeometry_loss(imageMatrix=imageMatrix)
 
         print("loss",loss)
         return loss
 
-    initialGuess = np.array([0,0,1,0,0,1,0.06,np.pi / 2 + 0.3])
+    initialGuess = np.array([0,0,
+                             0,0,
+                             0.06,np.pi / 2 + 0.3])
 
-    bounds = [(-0.01, 0.01),(-0.01, 0.01),(0.95, 1.1),
-          (0, 0.2),(-0.1, 0.1),(0.7, 1),
-          (0.07, 0.1),(np.pi/2+0.28, np.pi/2+0.32)
+    ncrysxBounds = (None, None)
+    ncrysyBounds = (None, None)
+
+    ncamxBounds = (0, None)
+    ncamyBounds = (None, None)
+
+    rcamBounds= (0.05, 0.08)
+    thetacamBounds = (None, None)
+
+    bounds = [ncrysxBounds,ncrysyBounds,
+          ncamxBounds,ncamyBounds,
+          rcamBounds,thetacamBounds
           ]
     # Perform optimization
-    result = minimize(lossFunction, initialGuess,bounds=bounds, method='Nelder-Mead',options={'maxiter': 30})
+    result = minimize(lossFunction, initialGuess,bounds=bounds, method='Nelder-Mead',options={'maxiter': iterations})
 
     # Optimized parameters
     optimized_params = result.x
-    n1_optimized = optimized_params[:3] / np.linalg.norm(optimized_params[:3])
-    n2_optimized = optimized_params[3:6] / np.linalg.norm(optimized_params[3:6])
-    r_optimized = optimized_params[6]
-    theta_optimized = optimized_params[7]
-
     print("Optimized Parameters:")
-    print(f"n1: {n1_optimized}")
-    print(f"n2: {n2_optimized}")
-    print(f"d: {r_optimized}")
-    print(f"theta: {theta_optimized}")
+    print(f"n crystal: {np.array([optimized_params[0], optimized_params[1], 1])}")
+    print(f"n camera: {np.array([optimized_params[2], optimized_params[3], 1])}")
+    print(f"r: {optimized_params[4]}")
+    print(f"theta: {optimized_params[5]}")
 
-    geo = GeometryCalibration()
-
-    geo.computeGeometry_loss(imageMatrix=imageMatrix,printImage=True)
-
-
-# optimiseGeometry(high_intensity_points)
+    geo = GeometryCalibration(n_crystal=np.array([optimized_params[0], optimized_params[1], 1]),
+                 n_camera=np.array([optimized_params[2], optimized_params[3], 1]),
+                 r_camera_spherical=np.array([optimized_params[4], optimized_params[5], np.pi]))
+    geo.computeGeometry_loss(imageMatrix=imageMatrix,printImage=True,)
 
 
-print("n_crys",n_crytest)
-print("n_cam",n_cam_test)
-print("r_cam",r_cam_spher_test)
+# optimiseGeometry(reducedCovTest)
 
 geo = GeometryCalibration(n_crystal = n_crytest,
                  n_camera = n_cam_test,
                  r_camera_spherical= r_cam_spher_test)
-geo.computeGeometry_loss(array8Test,True)
+geo.computeGeometry_loss(high_intensity_points,True)
 
 
 
