@@ -51,11 +51,13 @@ class Geometry:
 
     def xy_coords_of_E(self, energy_eV,phiStepSize = 0.0001):
 
+        # Rotation matrix from crystal 001 to n crystal
         rotMatrix_crys = rotMatrixUsingEuler(self.crystal_pitch,self.crystal_roll)
+
+        # angle between crystal plane and ray
         theta_E = bragg_E_to_theta(energy_eV)
+        # polar coordinate of this angle (still as if crystal is 001)
         theta_E_polar = np.pi / 2 + theta_E
-
-
 
         list_xy = []
 
@@ -449,7 +451,7 @@ def optimiseGeometryToCalibratedLines(imageMat, r_thetaval=2.618,logTextFile=Non
 
         geo = Geometry(crystal_pitch=p[0], crystal_roll=p[1],
                        camera_pitch=p[2], camera_roll=p[3],
-                       r_camera_spherical=np.array([p[4], r_thetaval, np.pi]), )
+                       r_camera_spherical=np.array([p[4], r_thetaval, np.pi]))
 
         alphaLineCoords = geo.xy_coords_of_E(E_Lalpha_eV)  # More Right / right line
         betaLineCoords = geo.xy_coords_of_E(E_Lbeta_eV)    # More Left / left line
@@ -500,7 +502,7 @@ def optimiseGeometryToCalibratedLines(imageMat, r_thetaval=2.618,logTextFile=Non
               (-0.002, 0.003),  # crystal roll Bounds
               (0, None),  # Camera pitch Bounds
               (0, 0),  # camera roll Bounds
-              (0.18, 0.25),  # rcamBounds
+              (0.18, 0.21),  # rcamBounds
               ]
 
     result = minimize(lossFunction, initialGuess, bounds=bounds, method='Nelder-Mead', options={'maxiter': iterations},
@@ -668,7 +670,8 @@ def optimiseGeometryToCalibratedLibesCMA(imageMat,r_thetaval=2.62, logTextFile=N
 
 
 
-# optimiseGeometryToCalibratedLines(imTest,geometryLog,iterations=30)
+# optimiseGeometryToCalibratedLines(imTest,r_thetaval=2.595
+#                                   ,logTextFile=geometryLog,iterations=30)
 # optimiseGeometryToCalibratedLibesCMA(imTest)
 
 # geo = Geometry(crystal_pitch=-0.19, crystal_roll=0,camera_pitch=0,camera_roll=0,r_camera_spherical=np.array([1,1,1]))
@@ -677,12 +680,12 @@ def optimiseGeometryToCalibratedLibesCMA(imageMat,r_thetaval=2.62, logTextFile=N
 
 if __name__ == '__main__':
 
-    crysPitch = -0.7141186367791281
+    crysPitch = -0.3344584639102419
     CrysRoll = -0.0025759119106860723
-    CamPitch = 1.22
+    CamPitch = 1.18
     CamRoll = -0.00509203896479344
-    rcamSpherical = np.array([0.19,  # r
-                              2.6,  # theta
+    rcamSpherical = np.array([0.09 ,  # r
+                              2.60,  # theta
                               np.pi])
 
     def testPlot():

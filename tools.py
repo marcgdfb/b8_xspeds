@@ -65,7 +65,6 @@ def spherical_to_cartesian(r_spherical):
     r = r_spherical[0]
     theta = r_spherical[1]
     phi = r_spherical[2]
-
     x = r * np.sin(theta) * np.cos(phi)
     y = r * np.sin(theta) * np.sin(phi)
     z = r * np.cos(theta)

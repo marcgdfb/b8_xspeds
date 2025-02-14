@@ -1,6 +1,6 @@
 import numpy as np
 
-d_beryl = 15.96 * (10**-10)
+d_beryl = (15.96/2) * (10**-10)
 q_e = 1.602176634 * (10**-19)
 E_min_eV = 1100     # gives an angle of 0.360893817056611
 E_max_eV = 1600     # gives an angle of 0.24521360602485284
