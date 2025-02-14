@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
-import numpy as np
 import seaborn as sns
+from mpl_toolkits.mplot3d import Axes3D
 
 from constants import *
 
@@ -16,6 +16,7 @@ def bragg_E_to_theta(E_eV,d=d_beryl):
 
     return np.arcsin(sint)
 
+
 def bragg_theta_to_E(theta_rad, d=d_beryl):
     """
     Takes input angle (in rad) and outputs an energy in eV.
@@ -25,173 +26,14 @@ def bragg_theta_to_E(theta_rad, d=d_beryl):
 
     return (h_planck*c)/(2*d*np.sin(theta_rad)*q_e)
 
-# Assuming that the crystal and detector lie parallel. This is the most logical
-# geometric setup
 
-# checked with sketchup
-# TODO: Use the known emission lines to improve understanding of where the crystal is
-def height_source_detector(E_min_detector=E_min_eV,E_max_detector=E_max_eV,l_sep=length_detector):
+def bragg_vectorised(E_eV,n_crystal,d=d_beryl):
 
-    t1 = np.tan(bragg_E_to_theta(E_min_detector))
-    t2 = np.tan(bragg_E_to_theta(E_max_detector))
+    # We demand that n dot v (normalised) give sin t where t is given by the bragg condition
 
-    R_1 = l_sep/((t1/t2) - 1)
-    h = R_1*t1
+    sint = (h_planck*c)/(2*d*E_eV*q_e)
 
-    return h
-
-# print(height_source_detector())
-
-def radius_of_energy(energy_eV,E_min_detector=E_min_eV,E_max_detector=E_max_eV,l_sep=length_detector):
-
-    theta = bragg_E_to_theta(energy_eV)
-    return height_source_detector(E_min_detector,E_max_detector,l_sep)/np.tan(theta)
-
-def energy_of_radius(radius_metres):
-
-    t_theta = height_source_detector()/radius_metres
-
-    return bragg_theta_to_E(np.arctan(t_theta))
-
-
-
-# TODO: The way that this calculates Emax,min is not correct. They need to be in the direction orthogonal to the curve...
-
-def xypixel_observationPlane_to_energy(x_pixel,y_pixel,
-                                      r_edge=radius_of_energy(E_min_eV),
-                                      num_pixels_x = 2048,
-                                      num_pixels_y = 2048):
-    """
-    The input of the pixel position i.e. the ij element of the
-    image matrix is given to find the radius and hence the angle and energy associated with it.
-
-    Currently the code assumes num_pixels x,y is an even number
-
-    r_edge = 0.0544
-
-    returns E, E upper bound, E lower bound
-    """
-    # First the 0,0 element
-    x_00pixel = -r_edge - (num_pixels_x-0.5)*pixel_width
-    y_00pixel = ((num_pixels_y/2)-0.5)*pixel_width
-
-    y_point = y_00pixel - y_pixel*pixel_width
-    x_point = x_00pixel + x_pixel*pixel_width
-
-    r_point = np.sqrt(x_point**2 + y_point**2)
-
-    E_center = energy_of_radius(r_point)
-
-    # What is the uncertainty on this? Want to find the largest possible value in that given pixel
-    # To avoid differentiation can just use geometry here:
-
-    if y_pixel <= (num_pixels_y/2)-1:
-        print("Above center of observation plane")
-        # Max is in the top left corner
-        y_point_Emax = y_point + pixel_width/2
-        x_point_Emax = x_point - pixel_width/2
-        r_point_Emax = np.sqrt(x_point_Emax**2 + y_point_Emax**2)
-
-        E_upperLim = energy_of_radius(r_point_Emax)
-
-        # Min is in the bottom right corner
-        y_point_Emin = y_point - pixel_width/2
-        x_point_Emin = x_point + pixel_width/2
-        r_point_Emin = np.sqrt(x_point_Emin ** 2 + y_point_Emin ** 2)
-
-        E_lowerLim = energy_of_radius(r_point_Emin)
-
-    if y_pixel >= (num_pixels_y / 2):
-        print("Below center of observation plane")
-        # Max is now in the bottom left corner
-        y_point_Emax = y_point - pixel_width / 2
-        x_point_Emax = x_point - pixel_width / 2
-        r_point_Emax = np.sqrt(x_point_Emax ** 2 + y_point_Emax ** 2)
-
-        E_upperLim = energy_of_radius(r_point_Emax)
-
-        # Min is in the top right corner
-        y_point_Emin = y_point + pixel_width / 2
-        x_point_Emin = x_point + pixel_width / 2
-        r_point_Emin = np.sqrt(x_point_Emin ** 2 + y_point_Emin ** 2)
-
-        E_lowerLim = energy_of_radius(r_point_Emin)
-    else:
-        print()
-
-
-    return E_center, E_upperLim, E_lowerLim
-
-
-# print(xypixel_observationPlane_to_energy(1023,1023))
-
-
-
-# To go the other way we want to have for a given E we obtain a theta,
-# the phi will assume an isotropic distribution that will mean sin(theta)
-# * change in phi / 2 pi is the relative proportion which is then multiplied by
-# the intensity of the spectrum for the simulation
-
-def phiHalf(energy_eV, widthDetector=length_detector):
-    """
-    For a given energy, by virtue of the geometry, there is a range of phi values
-    that are possible. I will take this to be measured from the optical axis such
-    that there are values between - phi_half(E) and + phi_half(E) to make a total
-    of phi(E)
-
-    """
-    radius = radius_of_energy(energy_eV=energy_eV)
-
-    # Finding allowed phi range
-    phi_half = np.arcsin((widthDetector / 2) / radius)
-    return phi_half
-
-
-
-def theta_phi_to_xy_observation(theta,phi,
-                                r_edge=radius_of_energy(E_min_eV),
-                                num_pixels_x=2048,
-                                num_pixels_y=2048
-                                ):
-    """
-    Inputs theta and phi (in rad) and returns the associated pixel
-    number in a numpy array with the y number then x number.
-    """
-    R = height_source_detector()/np.tan(theta)
-
-    x_00pixel = -r_edge - (num_pixels_x - 0.5) * pixel_width
-    y_00pixel = ((num_pixels_y / 2) - 0.5) * pixel_width
-
-    x_point = - R*np.cos(phi)
-    y_point = R*np.sin(phi)
-
-    difference_y_pixels = round((y_00pixel - y_point)/pixel_width)
-    difference_x_pixels = round((x_point - x_00pixel)/pixel_width)
-
-    return np.array([difference_y_pixels,difference_x_pixels])
-
-# proportion of phi think d theta sin theta d phi / 4pi
-
-def solidAngleNormalisation(energy_eV,widthDetector=length_detector):
-    """
-    For a given value of energy we have an associated radius and angle and hence
-    can compute the fractional normalisation. The true count is the count incident
-    on the detector / this fractional normalisation
-
-    This factor is given by (2 * phi * sin(theta)) / (4 pi)
-    """
-    # Given a value of radius r, due to the size of the CCD each radius has a different range of
-    # phi that it is allowed 2 phi sin theta / 4 pi
-
-    radius = radius_of_energy(energy_eV=energy_eV)
-    theta = bragg_E_to_theta(energy_eV)
-
-    # Finding allowed phi range
-    phi = 2 * np.arcsin( (widthDetector/2) / radius)
-
-    fractional_normalisation = (2*phi * np.sin(theta)) / (4 * np.pi)
-
-    return fractional_normalisation
+    n_crys_normalised = n_crystal / np.linalg.norm(n_crystal)
 
 
 
@@ -202,10 +44,16 @@ def cartesian_to_spherical(r_cart):
     Inputs: numpy array r_cart with x,y,z coordinates in metres
     returns r (m),theta and phi (both rad) that defines this point in spherical coordinates
     """
-    xsqr_plus_ysqr = r_cart[0]**2 + r_cart[1]**2
-    r = np.sqrt( xsqr_plus_ysqr + r_cart[2]**2)
-    theta = np.arctan( np.sqrt(xsqr_plus_ysqr)/r_cart[2])
-    phi = np.arctan(r_cart[1]/r_cart[0])
+    x = r_cart[0]
+    y = r_cart[1]
+    z = r_cart[2]
+
+    xsqr_Plus_ysqr = x**2 + y**2
+
+    # Note for future self: DO NOT just use arctan it does not properly account for signs
+    r = np.sqrt(xsqr_Plus_ysqr + z**2)
+    theta = np.arctan2(np.sqrt(xsqr_Plus_ysqr),z)
+    phi = np.arctan2(y,x)
 
     return np.array([r,theta,phi])
 
@@ -261,9 +109,6 @@ def Rotation_matrix(n_vector, n_final=np.array([0,0,1])):
 
         return RotMat
 
-
-
-
 def inverseRotation_matrix(n_vector, n_final=np.array([0,0,1])):
     """
     Takes a vector n_vector and finds the matrix to rotate it to n_final
@@ -301,6 +146,172 @@ def inverseRotation_matrix(n_vector, n_final=np.array([0,0,1])):
 
     return inverseRot
 
+def ray_in_planeCamera(v_ray_cart, n_camera_cart, r_camera_cart):
+    """
+    The plane is defined by r dot n = a_onPlane dot n
+
+    To find where the ray hits the plane we wish to solve this equation for the ray and
+    then convert this point into x,y pixel for the camera.
+
+    For some scaling of the unit ray vector D * v_ray = r there is a solution
+    """
+    D = np.dot(r_camera_cart, n_camera_cart) / np.dot(v_ray_cart, n_camera_cart)
+
+    # r_camera is being optimised as the center of the plane, finding the vector away from this
+
+    r_inPlane = D * v_ray_cart - r_camera_cart
+
+    # Considering this in the plane of the camera
+    # Finding the rotation matrix
+    rotMatrix_cam = Rotation_matrix(n_camera_cart)
+
+    r_planePrime = np.dot(rotMatrix_cam, r_inPlane)
+    x_plane = r_planePrime[0]
+    y_plane = r_planePrime[1]
+
+    return x_plane,y_plane
+
+
+def solidAngleNormalisation(energy_eV, n_crystal, n_camera, r_camera):
+    """
+    For a given value of energy we have an associated radius and angle and hence
+    can compute the fractional normalisation. The true count is the count incident
+    on the detector / this fractional normalisation
+
+    This factor is given by (2 * phi * sin(theta)) / (4 pi)
+    """
+
+
+    # Given a value of radius r, due to the size of the CCD each radius has a different range of
+    # phi that it is allowed 2 phi sin theta / 4 pi
+
+
+    # rotation matrix from bragg crystal to our coordinate system
+    rotMatrix_cry = inverseRotation_matrix(n_crystal)
+
+    # The source is considered to be at the origin
+    theta = bragg_E_to_theta(energy_eV)
+
+    # The allowed directional vectors in spherical coordinate are then (1,theta, [0,2 pi])
+
+    for phi in np.arange(np.pi / 2, 3 * np.pi / 2, 0.0001):
+
+        v_ray_prime = spherical_to_cartesian(np.array([1, np.pi / 2 + theta, phi]))
+
+        v_ray = np.dot(rotMatrix_cry, v_ray_prime)
+
+        v_ray_spherical = cartesian_to_spherical(v_ray)
+
+        # TODO: consider whether this geometry is entirely correct
+
+        print(v_ray_spherical)
+
+    phiRange = 1
+    valTheta = 1
+
+    fractional_normalisation = (2*phiRange * np.sin(valTheta)) / (4 * np.pi)
+
+    return fractional_normalisation
+
+# solidAngleNormalisation(1200,np.array([0.0001,0,1]),None,None)
+
+def energy_to_pixel(energy_eV,n_crystal,n_camera, r_camera_spherical,
+                    xpixels=2048, ypixels=2048, pixelWidth=pixel_width,
+                    ):
+
+    # First working within the frame where the crystal is orientated with the z axis parallel to its norm:
+    theta_alpha = bragg_E_to_theta(energy_eV)
+    # The rotation matrix from this frame to our general coordinate system is
+    rotMatrix_crystaltoNormal = inverseRotation_matrix(n_crystal)
+
+    df_xy_inCamPlane =[]
+    for phi in np.arange(0, 2 * np.pi, 0.0001):
+
+        # The vector of the ray in the crystal orientated 0,0,1
+        v_ray_prime = spherical_to_cartesian(np.array([1, np.pi / 2 + theta_alpha, phi]))
+
+        v_ray = np.dot(rotMatrix_crystaltoNormal, v_ray_prime)
+
+        x_plane, y_plane = ray_in_planeCamera(v_ray_cart=v_ray, n_camera_cart=n_camera, r_camera_cart=cartesian_to_spherical(r_camera_spherical))
+
+        if ((abs(x_plane) < (xpixels-1)*pixelWidth / 2).all() and
+                (abs(y_plane) < (ypixels-1)*pixelWidth / 2).all()):
+            df_xy_inCamPlane.append([x_plane, y_plane])
+
+def pixel_to_energy(x_pixel,y_pixel,
+                    n_crystal,n_camera,r_camera_spherical,
+                    xpixels=2048, ypixels=2048, pixelWidth=pixel_width,
+                    ):
+    pass
+
+def nVectorFromEuler(pitch_rad,roll_rad):
+
+    nx = np.sin(pitch_rad)
+    ny = - np.cos(pitch_rad) * np.sin(roll_rad)
+    nz = np.cos(pitch_rad) * np.cos(roll_rad)
+
+    return np.array([nx,ny,nz])
+
+def EulerfromNVector(n_vector):
+    nx = n_vector[0]
+    ny = n_vector[1]
+    nz = n_vector[2]
+
+    pitch_rad = np.arctan(ny/nx)
+    roll_rad = np.arctan(nz/np.sqrt(nx**2+ny**2))
+
+    return pitch_rad,roll_rad
+
+def rotMatrixUsingEuler(pitch_rad,roll_rad):
+
+    # Here using the euler angles to rotate from 0 0 1 to the normal vector
+    # The way that I have chose by x,y,z implies a rotation around the y axis first then around the x axis
+
+    rotMatAroundY = np.array([
+        [np.cos(pitch_rad),  0, np.sin(pitch_rad)],
+        [0,              1, 0],
+        [-np.sin(pitch_rad), 0, np.cos(pitch_rad)]
+    ])
+
+    rotMatAroundX = np.array([
+        [1, 0,          0],
+        [0, np.cos(roll_rad), -np.sin(roll_rad)],
+        [0, np.sin(roll_rad), np.cos(roll_rad)]
+    ])
+
+    return np.dot(rotMatAroundX,rotMatAroundY)
+
+def InverseRotMatrixUsingEuler(pitch_rad,roll_rad):
+
+    # Change Sign and order
+    rotMatBackAroundX = np.array([
+        [1, 0,          0],
+        [0, np.cos(roll_rad), np.sin(roll_rad)],
+        [0, -np.sin(roll_rad), np.cos(roll_rad)]
+    ])
+
+    rotMatBackAroundy = np.array([
+        [np.cos(pitch_rad),   0, -np.sin(pitch_rad)],
+        [0,               1, 0],
+        [np.sin(pitch_rad), 0, np.cos(pitch_rad)]
+    ])
+
+    # First rotated around Y then X so to undo we want reverse X then reverse y
+
+    return np.dot(rotMatBackAroundy,rotMatBackAroundX)
+
+# Checked that these rotate 001 to the same as nVector from Euler, and it is the inverse for that process for pi/4 both
+# print(nVectorFromEuler(-0.19,0))
+# print(np.dot(rotMatrixUsingEuler(-0.19,0),np.array([0,0,1])))
+
+
+minimise_count = 0
+def callbackminimise(params):
+    global minimise_count
+    minimise_count += 1
+    print("-"*40)
+    print(f"Iteration {minimise_count}")
+    print(params)
 
 
 class Visualise:
@@ -310,3 +321,7 @@ class Visualise:
 
         sns.lineplot(data=df,x=energyCol, y=countIntensityCol)
         plt.show()
+
+def append_to_file(file_path, text):
+    with open(file_path, "a", encoding="utf-8") as file:
+        file.write("\n"+ text)

@@ -1,7 +1,5 @@
-import numpy as np
 import pandas as pd
 
-from getImageData import *
 from tools import *
 
 class Bragg:
