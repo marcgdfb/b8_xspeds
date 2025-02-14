@@ -434,9 +434,7 @@ class Calibrate:
         return linesMatrix
 
 
-
-
-def optimiseGeometryToCalibratedLines(imageMat, r_thetaval=2.618,logTextFile=None, iterations=30,):
+def optimiseGeometryToCalibratedLines(imageMat, initialGuess,bounds,r_thetaval=2.618,logTextFile=None, weight_ofsettedPoints=0.5,iterations=30,):
     # linesMat = Calibrate(imageMat).matrixWithLinesOptimisation()
 
     # For Image 8
@@ -469,11 +467,21 @@ def optimiseGeometryToCalibratedLines(imageMat, r_thetaval=2.618,logTextFile=Non
 
             lossPositive += linesMatRight[y_pixel, x_pixel]
 
+            if x_pixel + 1 < geo.xWidth:
+                lossPositive += weight_ofsettedPoints * linesMatRight[y_pixel, x_pixel + 1]
+            if x_pixel - 1 >= 0:
+                lossPositive += weight_ofsettedPoints * linesMatRight[y_pixel, x_pixel - 1]
+
         for row in betaLineCoords:
             x_pixel = round((row[0] - x_0) / geo.pixelWidth)
             y_pixel = round((y_0 - row[1]) / geo.pixelWidth)
 
             lossPositive += linesMatLeft[y_pixel, x_pixel]
+
+            if x_pixel + 1 < geo.xWidth:
+                lossPositive += weight_ofsettedPoints * linesMatLeft[y_pixel, x_pixel + 1]
+            if x_pixel - 1 >= 0:
+                lossPositive += weight_ofsettedPoints * linesMatLeft[y_pixel, x_pixel - 1]
 
         # We wish to maximise the integral along these lines
         loss = - lossPositive
@@ -490,20 +498,6 @@ def optimiseGeometryToCalibratedLines(imageMat, r_thetaval=2.618,logTextFile=Non
 
         return loss
 
-
-    initialGuess = np.array([-0.7141186367791281,   # crystal pitch
-                             -0.0025759119106860723,   # crystal roll
-                             1.22,   # Camera pitch, pi/4 is ~ 0.785
-                             -0.00509203896479344,   # camera roll
-                             0.19  # r camera
-                             ])
-
-    bounds = [(None, None),  # crystal pitch Bounds
-              (-0.002, 0.003),  # crystal roll Bounds
-              (0, None),  # Camera pitch Bounds
-              (0, 0),  # camera roll Bounds
-              (0.18, 0.21),  # rcamBounds
-              ]
 
     result = minimize(lossFunction, initialGuess, bounds=bounds, method='Nelder-Mead', options={'maxiter': iterations},
                       callback=callbackminimise)
@@ -539,7 +533,7 @@ def optimiseGeometryToCalibratedLines(imageMat, r_thetaval=2.618,logTextFile=Non
         append_to_file(logTextFile, f"camera pitch bounds = {bounds[2]}, camera roll bounds = {bounds[3]}")
         append_to_file(logTextFile, f"rcamBounds = {bounds[4]}")
 
-        append_to_file(logTextFile,f"optimised rystal pitch = {crystal_pitch}, n crystal roll = {crystal_roll}")
+        append_to_file(logTextFile,f"optimised crystal pitch = {crystal_pitch}, n crystal roll = {crystal_roll}")
         append_to_file(logTextFile,f"optimised camera pitch = {camera_pitch}, n camera roll = {camera_roll}")
         append_to_file(logTextFile,f"optimised rcam spherical = {rcamSphericalOptimised}")
 
@@ -550,6 +544,9 @@ def optimiseGeometryToCalibratedLines(imageMat, r_thetaval=2.618,logTextFile=Non
 
         print("-" * 30)
         print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        print(f"Optimised crystal pitch = {crystal_pitch}, n crystal roll = {crystal_roll}")
+        print(f"optimised camera pitch = {camera_pitch}, n camera roll = {camera_roll}")
+        print(f"optimised rcam spherical = {rcamSphericalOptimised}")
         print(f"Optimised n crystal = {ncrysOptimised}")
         print(f"Optimised n camera = {ncamOptimised}")
         print(f"Optimised r camera = {rcamSphericalOptimised}")
@@ -559,7 +556,7 @@ def optimiseGeometryToCalibratedLines(imageMat, r_thetaval=2.618,logTextFile=Non
         logResults()
 
 
-def optimiseGeometryToCalibratedLibesCMA(imageMat,r_thetaval=2.62, logTextFile=None):
+def optimiseGeometryToCalibratedLibesCMA(initialGuess,bounds,sigma0=0.001,r_thetaval=2.62, logTextFile=None):
     # For Image 8
     linesMatLeft = Calibrate(imTest, None).matrixWithLines(Aoptimised=6.613794078473409e-05, Boptimised=862,
                                                            Coptimised=1278, plotLines=False)
@@ -567,11 +564,15 @@ def optimiseGeometryToCalibratedLibesCMA(imageMat,r_thetaval=2.62, logTextFile=N
                                                             Coptimised=1418, plotLines=False)
 
     def lossFunction(params):
+
+        weight_ofsettedPoints = 0.5
+
         p = params
 
         geo = Geometry(crystal_pitch=p[0], crystal_roll=p[1],
                        camera_pitch=p[2], camera_roll=p[3],
                        r_camera_spherical=np.array([p[4], r_thetaval, np.pi]), )
+
         alphaLineCoords = geo.xy_coords_of_E(E_Lalpha_eV)  # More Right / right line
         betaLineCoords = geo.xy_coords_of_E(E_Lbeta_eV)  # More Left / left line
 
@@ -587,11 +588,21 @@ def optimiseGeometryToCalibratedLibesCMA(imageMat,r_thetaval=2.62, logTextFile=N
 
             lossPositive += linesMatRight[y_pixel, x_pixel]
 
+            if x_pixel + 1 < geo.xWidth:
+                lossPositive += weight_ofsettedPoints * linesMatRight[y_pixel, x_pixel + 1]
+            if x_pixel - 1 >= 0:
+                lossPositive += weight_ofsettedPoints * linesMatRight[y_pixel, x_pixel - 1]
+
         for row in betaLineCoords:
             x_pixel = round((row[0] - x_0) / geo.pixelWidth)
             y_pixel = round((y_0 - row[1]) / geo.pixelWidth)
 
             lossPositive += linesMatLeft[y_pixel, x_pixel]
+
+            if x_pixel + 1 < geo.xWidth:
+                lossPositive += weight_ofsettedPoints * linesMatLeft[y_pixel, x_pixel + 1]
+            if x_pixel - 1 >= 0:
+                lossPositive += weight_ofsettedPoints * linesMatLeft[y_pixel, x_pixel - 1]
 
         # We wish to maximise the integral along these lines
         loss = - lossPositive
@@ -608,17 +619,6 @@ def optimiseGeometryToCalibratedLibesCMA(imageMat,r_thetaval=2.62, logTextFile=N
 
         return loss
 
-    initialGuess = np.array([-6.120306912807198e-05,  # crystal pitch
-                             -1.2852834454814307e-05,  # crystal roll
-                             0.780098495349171,  # Camera pitch, pi/4 is ~ 0.785
-                             0,  # camera roll
-                             0.20008739  # r camera
-                             ])
-
-    sigma0 = 0.005
-
-    bounds = [[None, None, None, None,  0.08],  # Lower bounds
-              [None, None, None, None,  0.25]]  # Upper bounds
 
     # Set up the options dictionary with the bounds
     opts = {
@@ -649,7 +649,7 @@ def optimiseGeometryToCalibratedLibesCMA(imageMat,r_thetaval=2.62, logTextFile=N
         append_to_file(logTextFile, f"camera pitch bounds = {bounds[2]}, camera roll bounds = {bounds[3]}")
         append_to_file(logTextFile, f"rcamBounds = {bounds[4]}")
 
-        append_to_file(logTextFile,f"optimised rystal pitch = {crystal_pitch}, n crystal roll = {crystal_roll}")
+        append_to_file(logTextFile,f"optimised crystal pitch = {crystal_pitch}, n crystal roll = {crystal_roll}")
         append_to_file(logTextFile,f"optimised camera pitch = {camera_pitch}, n camera roll = {camera_roll}")
         append_to_file(logTextFile,f"optimised rcam spherical = {rcamSphericalOptimised}")
 
@@ -670,23 +670,55 @@ def optimiseGeometryToCalibratedLibesCMA(imageMat,r_thetaval=2.62, logTextFile=N
 
 
 
-# optimiseGeometryToCalibratedLines(imTest,r_thetaval=2.595
-#                                   ,logTextFile=geometryLog,iterations=30)
-# optimiseGeometryToCalibratedLibesCMA(imTest)
-
-# geo = Geometry(crystal_pitch=-0.19, crystal_roll=0,camera_pitch=0,camera_roll=0,r_camera_spherical=np.array([1,1,1]))
-# geo.rayBragg(E_Lalpha_eV,np.pi)
-
 
 if __name__ == '__main__':
 
-    crysPitch = -0.3344584639102419
-    CrysRoll = -0.0025759119106860723
-    CamPitch = 1.18
-    CamRoll = -0.00509203896479344
-    rcamSpherical = np.array([0.09 ,  # r
-                              2.60,  # theta
-                              np.pi])
+    crysPitch = -0.345
+    CrysRoll = 0.018
+    CamPitch = 0.78
+    CamRoll = -0.0051
+    rcam = 0.083
+    thetacam = 2.567
+    rcamSpherical = np.array([rcam,thetacam,np.pi])
+
+    crysPitch = -0.3445092569785031
+    CrysRoll = 0.018058061625517555
+    CamPitch = 0.7965766171590669
+    CamRoll = -0.005201895746676618
+    rcam = 0.08378234
+    thetacam = 2.567
+    rcamSpherical = np.array([rcam,thetacam,np.pi])
+
+    def fitMinimise():
+        initialGuess = np.array([crysPitch,  # crystal pitch
+                                 CrysRoll,  # crystal roll
+                                 CamPitch,  # Camera pitch, pi/4 is ~ 0.785
+                                 CamRoll,  # camera roll
+                                 rcam  # r camera
+                                 ])
+
+        bounds = [(None, None),  # crystal pitch Bounds
+                  (None, None),  # crystal roll Bounds
+                  (0, None),  # Camera pitch Bounds
+                  (None, None),  # camera roll Bounds
+                  (0.07, 0.15),  # rcamBounds
+                  ]
+
+        optimiseGeometryToCalibratedLines(imTest,initialGuess,bounds,r_thetaval=thetacam,logTextFile=geometryLog,iterations=30,weight_ofsettedPoints=0.5)
+
+    # fitMinimise()
+
+    def fitCMA():
+        initial_guess = np.array([crysPitch,  # crystal pitch
+                                 CrysRoll,  # crystal roll
+                                 CamPitch,  # Camera pitch, pi/4 is ~ 0.785
+                                 CamRoll,  # camera roll
+                                 rcam  # r camera
+                                 ])
+        bounds = [[None, None, None, None, 0.08],  # Lower bounds
+                  [None, None, None, None, 0.25]]  # Upper bounds
+
+        optimiseGeometryToCalibratedLibesCMA(initial_guess,bounds,sigma0=0.001,r_thetaval=thetacam,logTextFile=geometryLog)
 
     def testPlot():
         print("crysPitch = ",crysPitch, "CrysRoll = ",CrysRoll)
@@ -695,11 +727,50 @@ if __name__ == '__main__':
 
         geo = Geometry(crysPitch,CrysRoll,CamPitch,CamRoll,rcamSpherical)
         # # geo.visualiseLines()
-        geolinesMat = geo.createLinesMatrix(imTest,np.max(imClear),phiStepSize=0.0001)
+        geolinesMat = geo.createLinesMatrix(imTest,np.max(imVeryClear),phiStepSize=0.0001)
+        # geolinesMat = geo.createLinesMatrix(imTest, 2, phiStepSize=0.0001)
 
-        plt.imshow(imClear+geolinesMat, cmap="hot")
+        linesMatLeft = Calibrate(imTest, None).matrixWithLines(Aoptimised=6.613794078473409e-05, Boptimised=862,
+                                                               Coptimised=1278, plotLines=False)
+        linesMatRight = Calibrate(imTest, None).matrixWithLines(Aoptimised=7.063102423636962e-05, Boptimised=862,
+                                                                Coptimised=1418, plotLines=False)
+
+        def lossFunction():
+            alphaLineCoords = geo.xy_coords_of_E(E_Lalpha_eV)  # More Right / right line
+            betaLineCoords = geo.xy_coords_of_E(E_Lbeta_eV)  # More Left / left line
+
+            # If we are optimising r camera to be that going to the centre of the camera then the 0,0 pixel is displaced by:
+            x_0 = - geo.xWidth / 2
+            y_0 = + geo.yWidth / 2
+
+            lossPositive = 0
+
+            # Treat each Line Separately as not to over encourage curvature
+            for row in alphaLineCoords:
+                x_pixel = round((row[0] - x_0) / geo.pixelWidth)
+                y_pixel = round((y_0 - row[1]) / geo.pixelWidth)
+
+                lossPositive += linesMatRight[y_pixel, x_pixel]
+
+            for row in betaLineCoords:
+                x_pixel = round((row[0] - x_0) / geo.pixelWidth)
+                y_pixel = round((y_0 - row[1]) / geo.pixelWidth)
+
+                lossPositive += linesMatLeft[y_pixel, x_pixel]
+
+            # We wish to maximise the integral along these lines
+            loss = - lossPositive
+
+            return loss
+
+        print("loss",lossFunction())
+
+        LINESSSS=linesMatLeft+linesMatRight
+
+        plt.imshow(imVeryClear+geolinesMat, cmap="hot")
         plt.title(f"crystal: Pitch = {crysPitch}, Roll = {CrysRoll}; \ncamera: Pitch = {CamPitch}, Roll = {CamRoll}; \nr_camera = {rcamSpherical}")
         plt.show()
+
 
     testPlot()
 
