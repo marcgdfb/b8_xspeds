@@ -1,0 +1,3 @@
+X-ray Single Photon Energy Dispersive Program
+
+For photos and notes made in the process of making this see https://miro.com/welcomeonboard/QUM2cCtDaDhjRmtNQmw0dXVzSkFZNm5XYUZRcEh6WVkrbDRnMVN3VkN3eTVtZmUrSTZSQ2k3M1EzNFVYZ2djdDg0WEtjVlpPNnE5aWJ2OTczaUtWUFBDL3J6NTl6NFpXaXY2SG1nTndrK29BK0NLTWVmT1JOelJvOGdmcENYTVl0R2lncW1vRmFBVnlLcVJzTmdFdlNRPT0hdjE=?share_link_id=640928823258
