@@ -170,6 +170,23 @@ def ray_in_planeCamera(v_ray_cart, n_camera_cart, r_camera_cart):
 
     return x_plane,y_plane
 
+def xyPlane_to_ray(x_plane,y_plane,camera_ptich,camera_roll,r_camera_cart):
+
+    # x and y are the primed coordinates in the image plane
+
+    rPlane_prime = np.array([x_plane,y_plane,0])
+    # Rotating from 001 to the actual orientation
+    rotMatrixInverse = rotMatrixUsingEuler(camera_ptich,camera_roll)
+
+    rPlane = np.dot(rotMatrixInverse,rPlane_prime)
+
+
+    r_toPlane = r_camera_cart + rPlane
+
+    return r_toPlane
+
+
+
 
 def solidAngleNormalisation(energy_eV, n_crystal, n_camera, r_camera):
     """
@@ -237,11 +254,6 @@ def energy_to_pixel(energy_eV,n_crystal,n_camera, r_camera_spherical,
                 (abs(y_plane) < (ypixels-1)*pixelWidth / 2).all()):
             df_xy_inCamPlane.append([x_plane, y_plane])
 
-def pixel_to_energy(x_pixel,y_pixel,
-                    n_crystal,n_camera,r_camera_spherical,
-                    xpixels=2048, ypixels=2048, pixelWidth=pixel_width,
-                    ):
-    pass
 
 def nVectorFromEuler(pitch_rad,roll_rad):
 

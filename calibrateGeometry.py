@@ -48,7 +48,6 @@ class Geometry:
         self.r_cam_spherical = r_camera_spherical
         self.r_cam_cart = spherical_to_cartesian(r_camera_spherical)
 
-
     def xy_coords_of_E(self, energy_eV,phiStepSize = 0.0001):
 
         # Rotation matrix from crystal 001 to n crystal
@@ -67,14 +66,15 @@ class Geometry:
             v_ray_cart = np.dot(rotMatrix_crys, v_rayPrime_cart)
             v_ray_cart_normalised = v_ray_cart / np.linalg.norm(v_ray_cart)
 
-            v_ray_spherical = cartesian_to_spherical(v_ray_cart_normalised)
+            # v_ray_spherical = cartesian_to_spherical(v_ray_cart_normalised)
             # print("Energy eV = ", energy_eV, "Theta Polar in normal frame = ", v_ray_spherical[1])
 
             x_plane, y_plane = ray_in_planeCamera(v_ray_cart=v_ray_cart_normalised, n_camera_cart=self.nCam, r_camera_cart=self.r_cam_cart)
 
             if ((abs(x_plane) < (self.xWidth - self.pixelWidth) / 2).all() and
                     (abs(y_plane) < (self.yWidth - self.pixelWidth) / 2).all()):
-                list_xy.append([x_plane, y_plane])
+                if [x_plane, y_plane] not in list_xy:
+                    list_xy.append([x_plane, y_plane])
 
         if not list_xy:
             print(f"No values for E = {energy_eV}")
@@ -84,7 +84,12 @@ class Geometry:
     def xy_coords_of_EAlphaBeta(self, ):
 
         listAlpha = self.xy_coords_of_E(E_Lalpha_eV)
+
+        for i, alpharow in enumerate(listAlpha):
+            print(f"Alpha row {i}: xPixel = {alpharow[0] / self.pixelWidth}, yPixel = {alpharow[1] / self.pixelWidth}")
         listBeta = self.xy_coords_of_E(E_Lbeta_eV)
+        for i, betaarow in enumerate(listBeta):
+            print(f"Beta row {i}: xPixel = {betaarow[0] / self.pixelWidth}, yPixel = {betaarow[1] / self.pixelWidth}")
 
         return listAlpha + listBeta
 
@@ -278,6 +283,7 @@ class Calibrate:
 
         return lineintrgral
 
+    # noinspection PyTupleAssignmentBalance
     def fitGaussianToLineIntegral(self, a, b, cBounds, plotGauss=False):
 
         lineIntegralList = self.computeLine(a, b, cBounds)
@@ -293,8 +299,7 @@ class Calibrate:
         c_offset_guess = np.min(lineIntegralVals)
 
         try:
-            popt, pcov = curve_fit(gaussian, cVals, lineIntegralVals,
-                                   p0=[amp_guess, xpeak_guess, sigma_guess, c_offset_guess], maxfev=2000)
+            popt, pcov = curve_fit(gaussian, cVals, lineIntegralVals,p0=[amp_guess, xpeak_guess, sigma_guess, c_offset_guess], maxfev=2000)
             if plotGauss:
                 plt.plot(cVals, lineIntegralVals)
                 plt.plot(cVals, gaussian(cVals, *popt))
@@ -669,23 +674,74 @@ def optimiseGeometryToCalibratedLibesCMA(initialGuess,bounds,sigma0=0.001,r_thet
         logResults()
 
 
+class Bragg:
+    def __init__(self, crystal_pitch, crystal_roll, camera_pitch, camera_roll,
+                 r_camera_spherical, xpixels=2048, ypixels=2048, pixelWidth=pixel_width, ):
+        self.crystal_pitch = crystal_pitch
+        self.crystal_roll = crystal_roll
+        self.nxcrystal = np.sin(crystal_pitch) * np.cos(crystal_roll)
+        self.nycrystal = np.sin(crystal_pitch) * np.sin(crystal_roll)
+        self.nzcrystal = np.cos(crystal_pitch)
+        self.nCrystal = np.array([self.nxcrystal, self.nycrystal, self.nzcrystal])
+
+        self.camera_pitch = camera_pitch
+        self.camera_roll = camera_roll
+        self.nxcam = np.sin(camera_pitch) * np.cos(camera_roll)
+        self.nycam = np.sin(camera_pitch) * np.sin(camera_roll)
+        self.nzcam = np.cos(camera_pitch)
+        self.nCam = np.array([self.nxcam, self.nycam, self.nzcam])
+
+        self.r_camera_spherical = r_camera_spherical
+        self.xpixels = xpixels
+        self.ypixels = ypixels
+        self.pixelWidth = pixelWidth
+        self.xWidth = xpixels * pixelWidth
+        self.yWidth = ypixels * pixelWidth
+        self.r_cam_spherical = r_camera_spherical
+        self.r_cam_cart = spherical_to_cartesian(r_camera_spherical)
+
+    def xyImagePlane_to_energy(self,x_imPlane,y_imPlane,):
+        """
+        The origin of the following coordinates is at the center of the CCD
+        :param x_imPlane: The x coordinate in meters in the image plane.
+        :param y_imPlane: The y coordinate in meters in the image plane.
+        :return: The energy in eV of this point
+        """
+
+        # The x_imPlane,y_imPlane are those within the plane of the ccd.
+        # The r_spherical coordinate goes to the center of the image
+
+        # This is v_ray_cam from before
+        r_to_point = xyPlane_to_ray(x_imPlane,y_imPlane,camera_ptich=self.camera_pitch,camera_roll=self.camera_roll,r_camera_cart=self.r_cam_cart)
+        v_ray_cart_normalised = r_to_point / np.linalg.norm(r_to_point)
+
+        nCrysNormalised = self.nCrystal / np.linalg.norm(self.nCrystal)
+
+        sinthetaBragg = abs(np.dot(nCrysNormalised,v_ray_cart_normalised))
+        thetaBragg = np.arcsin(sinthetaBragg)
+
+        energy_eV = bragg_theta_to_E(theta_rad=thetaBragg)
+
+        return energy_eV
+
+
 
 
 if __name__ == '__main__':
 
-    crysPitch = -0.345
-    CrysRoll = 0.018
-    CamPitch = 0.78
-    CamRoll = -0.0051
-    rcam = 0.083
-    thetacam = 2.567
-    rcamSpherical = np.array([rcam,thetacam,np.pi])
+    # crysPitch = -0.345
+    # CrysRoll = 0.018
+    # CamPitch = 0.78
+    # CamRoll = -0.0051
+    # rcam = 0.083
+    # thetacam = 2.567
+    # rcamSpherical = np.array([rcam,thetacam,np.pi])
 
-    crysPitch = -0.3445092569785031
-    CrysRoll = 0.018058061625517555
-    CamPitch = 0.7965766171590669
-    CamRoll = -0.005201895746676618
-    rcam = 0.08378234
+    crysPitch = -0.3444672207603088
+    CrysRoll = 0.018114148603524255
+    CamPitch = 0.7950530342947064
+    CamRoll = -0.005323879756451509
+    rcam = 0.08395021
     thetacam = 2.567
     rcamSpherical = np.array([rcam,thetacam,np.pi])
 
@@ -784,4 +840,25 @@ if __name__ == '__main__':
 
     # showTwoLines()
 
+    def testBragg():
+        bragg = Bragg(crystal_pitch=crysPitch,crystal_roll=CrysRoll,
+                      camera_pitch=CamPitch, camera_roll=CamRoll,
+                      r_camera_spherical=rcamSpherical)
+
+        # geoCheck = Geometry(crystal_pitch=crysPitch,crystal_roll=CrysRoll,
+        #               camera_pitch=CamPitch, camera_roll=CamRoll,
+        #               r_camera_spherical=rcamSpherical)
+        # geoCheck.xy_coords_of_EAlphaBeta()
+
+        xpixel_fromCenter = 404
+        ypixel_fromCenter = 519
+
+        eVal = bragg.xyImagePlane_to_energy(xpixel_fromCenter*pixel_width,ypixel_fromCenter*pixel_width)
+
+
+        print(eVal)
+
+    # testBragg()
+
     pass
+

@@ -9,6 +9,8 @@ import torch
 from torch.nn import AvgPool2d,MaxPool2d
 import cv2
 
+list_darkData = [0,3,5,9,10,12,13,15,18]
+
 
 def loadData():
     # The following code was provided by Sam Vinko, University of Oxford:
@@ -37,16 +39,16 @@ def loadData():
 class Investigate:
 
     @staticmethod
-    def printImage(image_data, index):
-        plt.imshow(image_data[index], cmap="hot")
+    def printImage(image_data_matrix, index):
+        plt.imshow(image_data_matrix, cmap="hot")
         plt.colorbar(label="Intensity")
         plt.title(f"Image {index}")
         plt.show()
 
     @staticmethod
-    def printIntenstiy_horizontally(image_data, index):
+    def printIntenstiy_horizontally(image_data_matrix, index):
 
-        imMat = image_data[index]
+        imMat = image_data_matrix
 
         row_sums = np.sum(imMat, axis=1)  # Sum along each row
         row_indices = -np.arange(len(row_sums))
@@ -62,9 +64,9 @@ class Investigate:
 
 
     @staticmethod
-    def printIntenstiy_vertically(image_data, index):
+    def printIntenstiy_vertically(image_data_matrix, index):
 
-        imMat = image_data[index]
+        imMat = image_data_matrix
 
         def removeOutliers():
             column_sums = np.sum(imMat, axis=0)  # Sum along each row
@@ -97,11 +99,30 @@ class Investigate:
         plt.legend()
         plt.show()
 
+    @staticmethod
+    def printIntenstiy_verticallyWithOutliers(image_data_matrix, index):
+
+        imMat = image_data_matrix
+
+        col_sums = np.sum(imMat, axis=0)  # Sum along each column
+        col_indices = np.arange(len(col_sums))
+
+        plt.figure(figsize=(8, 5))
+        plt.scatter(col_indices, col_sums, marker='.',color='b', label='Column Sum',s=5)
+        plt.xlabel("Column Index")
+        plt.ylabel("Total Sum")
+        plt.title(f"Column Sum for image {index}")
+        plt.grid(True, linestyle='--', alpha=0.6)
+        plt.legend()
+        plt.show()
+
+
 
     @staticmethod
-    def histogram(image_data, index,bins=150):
-        plt.hist(image_data[index].flatten(), bins)
-        plt.yscale('log')
+    def histogram(image_data_matrix, index,bins=150,logarithmic=True):
+        plt.hist(image_data_matrix.flatten(), bins)
+        if logarithmic:
+            plt.yscale('log')
         plt.title(f"Image {index} Raw Hist")
         plt.show()
 
@@ -114,10 +135,77 @@ class Investigate:
 
         for num in range(10, len(imageData)):
             print(num)
-            Investigate.printImage(imageData,num)
-            Investigate.printIntenstiy_horizontally(imageData,num)
-            Investigate.printIntenstiy_vertically(imageData,num)
-            Investigate.histogram(imageData,num)
+            image_data_matrix_num = imageData[num]
+            Investigate.printImage(image_data_matrix_num,num)
+            Investigate.printIntenstiy_horizontally(image_data_matrix_num,num)
+            Investigate.printIntenstiy_vertically(image_data_matrix_num,num)
+            Investigate.histogram(image_data_matrix_num,num)
+
+    @staticmethod
+    def RemoveDarkImage(imageMat,darkImageMat,diagnostics=False):
+
+        # Note if stored in uint16 (unsigned integers) a negative makes the values explode hence:
+        removedDarkImageMat = imageMat.astype(np.int16) - darkImageMat.astype(np.int16)
+        if diagnostics:
+            print("Shape",imageMat.shape)
+            print("maxVal",np.max(imageMat))
+            print("minVal",np.min(imageMat))
+            print("darkShape",darkImageMat.shape)
+            print("darkMaxVal",np.max(darkImageMat))
+            print("darkMinVal",np.min(darkImageMat))
+            print("removedDarkShape",removedDarkImageMat.shape)
+            print("removedDarkMaxVal",np.max(removedDarkImageMat))
+            print("removedDarkMinVal",np.min(removedDarkImageMat))
+
+        return np.where(removedDarkImageMat > 0,removedDarkImageMat,0)
+
+    def darkImageRemoval(self,image_data_matrix,index,listDarkData,bins=150):
+
+        for darknum in listDarkData:
+            print("The Dark image is {}".format(darknum))
+            darkMat = loadData()[darknum]
+
+
+
+            dark_image_data_matrix = self.RemoveDarkImage(image_data_matrix,darkMat)
+
+            plt.imshow(dark_image_data_matrix, cmap="hot")
+            plt.colorbar(label="Intensity")
+            plt.title(f"Image {index} with Dark Image {darknum} Removed")
+            plt.show()
+
+            plt.hist(dark_image_data_matrix.flatten(), bins)
+            plt.yscale('log')
+            plt.title(f"Image {index} with Dark Image {darknum} Removed Hist")
+            plt.show()
+
+    @staticmethod
+    def plotMatClear(ImageMat,title,logarithmic=False):
+
+        fig, ax = plt.subplots(figsize=(8, 8))
+        # Get indices of nonzero elements
+        y, x = np.nonzero(ImageMat)
+        values = ImageMat[y, x]  # Get intensity values for color mapping
+
+        scatter = ax.scatter(x, y, c=values, cmap='plasma', s=5, edgecolors='white', linewidth=0.2)
+        plt.colorbar(scatter, ax=ax, label="Intensity")
+        # Invert y-axis to match image orientation
+        ax.set_ylim(ax.get_ylim()[::-1])
+
+        # Set xticks and yticks to correspond to matrix indices
+        ax.set_xticks(np.arange(0, ImageMat.shape[1], 250))
+        ax.set_yticks(np.arange(0, ImageMat.shape[0], 250))
+
+        # ax.set_xticklabels([int(i) for i in np.linspace(0, ImageMat.shape[1], 10)])  # Ensure integer labels
+        # ax.set_yticklabels([int(i) for i in np.linspace(0, ImageMat.shape[0], 10)])
+
+        ax.set_xlabel("X Index")
+        ax.set_ylabel("Y Index")
+        if logarithmic:
+            plt.yscale('log')
+        ax.set_title(title)
+        ax.set_aspect('equal')  # Ensure square pixels
+        plt.show()
 
 class Clean:
 
@@ -204,11 +292,12 @@ class Convolve:
                          padding=self.paddingTuple, stride=1)
         return pool(torch.tensor(self.imageMatrix, dtype=torch.float32).unsqueeze(0).unsqueeze(0)).reshape(2048, 2048)
 
+
 imData = loadData()
 
 num = 8
 array8Test = imData[8]
-high_intensity_points = Clean.matrixAboveThreshold(array8Test,107)
+high_intensity_points = Clean.matrixAboveThreshold(array8Test,100)
 high_intensity_points_binary = Clean.createBinaryMatrix(array8Test,107)
 doubledThresholdedPoints = Clean.createNormalisedLogMatrix(np.where((array8Test > 100) & (array8Test < 200),array8Test,0))
 
@@ -228,7 +317,7 @@ imTensorThresholded = np.where((imTensor > 5) & (imTensor < 30),imTensor,0)
 imVeryClear = np.asarray(Convolve(high_intensity_points,(21,5)).avgPool())
 
 
-imTest = doubledThresholdedPoints
+imTest = high_intensity_points
 imClear = np.asarray(Convolve(imTest,ktuple).avgPool())
 
 imTestBinary = Clean.createBinaryMatrix(imTest,0)
@@ -236,8 +325,21 @@ imTestBinary = Clean.createBinaryMatrix(imTest,0)
 
 
 if __name__ == '__main__':
-    plt.imshow(imVeryClear, cmap="hot"), plt.title(f"imVeryClear"), plt.show()
+
+    def plotRawMatThresholdedMat():
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1), plt.imshow(array8Test, cmap='hot'), plt.title(f"Image 8 Raw")
+        plt.subplot(1, 2, 2), plt.imshow(high_intensity_points, cmap='hot'), plt.title(f"Image 8 Thresholded above 100")
+        plt.show()
+
+    # Investigate.plotMatClear(Clean.matrixAboveThreshold(imData[9],100),"Image 9 thresholded above 100")
+
+    # Investigate().histogram(imData[8],8,150,logarithmic=False)
+    # plt.imshow(Clean.matrixAboveThreshold(array8Test,90), cmap="hot"), plt.title(f"image 8 thresholded above 90"), plt.show()
+    plt.imshow(Clean.matrixAboveThreshold(imData[18], 90), cmap="hot"), plt.title(f"image 18 thresholded above 90"), plt.show()
+    # plt.imshow(imVeryClear, cmap="hot"), plt.title(f"imVeryClear"), plt.show()
     # plt.imshow(doubledThresholdedPoints, cmap="hot"), plt.title(f"Thresholded Image 8 (200>I_pixel>100"), plt.show()
     # plt.imshow(imTensorThresholded),plt.title(f"Pooled Image {ktuple} greater than {lbThreshold} less than {ubThreshold}"),plt.show()
+
 
     pass

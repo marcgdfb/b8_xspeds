@@ -1,5 +1,6 @@
-from legacy_code.getImageData import *
+from imagePreProcessing import *
 from scipy.optimize import curve_fit
+from scipy.signal import convolve2d
 
 #region growth
 
@@ -96,7 +97,288 @@ class Pedastal:
         plt.show()
 
 
-ped8 = Pedastal(array8Test,"Image 8",bins=150,pedstalCutoffOffset=15)
+def kernelDict():
+    """
+    In this function sp will refer to Single pixel, dp,tp,qp etc
+    :return:
+    """
 
-ped8.findGaussian()
-# ped8.printHistogram()
+    # Single Pixel hits:
+    sp_isolated_kernel = np.array([[0, 0, 0],
+                          [0, 1, 0],
+                          [0, 0, 0]])
+
+    # TODO Consider how I want to separate diagonal terms
+    sp_diagonal_kernel1 = np.array([[0, 0, 0, 0],
+                                   [0, 0, 1, 0],
+                                   [0, 1, 0, 0],
+                                   [0, 0, 0, 0]])
+
+    sp_diagonal_kernel1 = np.array([[0, 0, 0, 0],
+                                   [0, 1, 0, 0],
+                                   [0, 0, 1, 0],
+                                   [0, 0, 0, 0]])
+
+    # Double Pixel Hits:
+    dp_isolated_kernel1 = np.array([[0, 0, 0, 0],
+                          [0, 1, 1, 0],
+                          [0, 0, 0, 0]])
+    dp_isolated_kernel2 = np.rot90(dp_isolated_kernel1)
+    # print(dp_isolated_kernel2)
+
+    tp_isolated_kernel1 = np.array([[0, 0, 0, 0],
+                          [0, 1, 1, 0],
+                          [0, 0, 1, 0],
+                          [0, 0, 0, 0]])
+    tp_isolated_kernel2 = np.rot90(tp_isolated_kernel1)
+    # print(tp_isolated_kernel2)
+    tp_isolated_kernel3 = np.rot90(tp_isolated_kernel2)
+    # print(tp_isolated_kernel3)
+    tp_isolated_kernel4 = np.rot90(tp_isolated_kernel3)
+
+    qp_isolated_kernel1 = np.array([[0, 0, 0, 0],
+                        [0, 1, 1, 0],
+                        [0, 1, 1, 0],
+                        [0, 0, 0, 0]])
+
+    kernel_dict = {
+        "single_pixel": [sp_isolated_kernel],
+        "double_pixel": [dp_isolated_kernel1, dp_isolated_kernel2],
+        "triple_pixel": [tp_isolated_kernel1, tp_isolated_kernel2, tp_isolated_kernel3, tp_isolated_kernel4],
+        "quadruple_pixel": [qp_isolated_kernel1]
+    }
+
+    return kernel_dict
+
+
+kdic = kernelDict()
+# print(kdic.keys())
+
+
+class PhotonCounting:
+    def __init__(self, ImageMatrix):
+        self.imMat = ImageMatrix
+
+    def singlePhotonSinglePixelHits(self):
+        """
+        Takes thresholded image matrix and finds all isolated points with no non zero neighbors
+        :return: A list of indices [i,j] which corresponds to [y,x] from the top left corner
+        """
+
+        rows = self.imMat.shape[0]
+        cols = self.imMat.shape[1]
+
+        # initialise list to store isolated points
+        isolated_points = []
+
+        # Iterate over each pixel in the image (excluding borders)
+        for i in range(1, rows - 1):
+            for j in range(1, cols - 1):
+                # Get the intensity of the current pixel
+                current_intensity = self.imMat[i, j]
+
+                # If the current intensity is non-zero, check its neighbors
+                if current_intensity != 0:
+                    # Get the 8 neighbors around the pixel
+                    neighbors = [
+                        self.imMat[i - 1, j - 1], self.imMat[i - 1, j], self.imMat[i - 1, j + 1],
+                        self.imMat[i, j - 1], self.imMat[i, j + 1],
+                        self.imMat[i + 1, j - 1], self.imMat[i + 1, j], self.imMat[i + 1, j + 1]
+                    ]
+
+                    # If all neighbors are 0, the point is isolated
+                    if all(neighbor == 0 for neighbor in neighbors):
+                        isolated_points.append([i, j])
+
+        print(f"Single Photon Single Pixel Hits: {len(isolated_points)}")
+        return isolated_points
+
+    def checkKernels(self, kernelDictionary=None, printImages=False):
+
+        if kernelDictionary is None:
+            kernelDictionary = kernelDict()
+
+        image_binary = np.where(self.imMat > 0, 1, 0)
+        rowNum, colNum = self.imMat.shape
+
+        matrixDictionary = {}
+
+        for key in kernelDictionary.keys():
+            print("-" * 30)
+            print(f"Performing Convolution for {key} kernels:")
+            kernels = kernelDictionary[key]
+
+            matConvolvedTotal = np.zeros(self.imMat.shape)
+            matchCount = 0
+
+            for kernel in kernels:
+                outputMat = np.zeros(self.imMat.shape)
+                k_rows, k_cols = kernel.shape
+
+
+                # Convolved the image
+                for i in range(rowNum - k_rows + 1):
+                    for j in range(colNum - k_cols + 1):
+                        # Consider areas of the same size as the kernel:
+                        convolvedArea = image_binary[i:i + k_rows, j:j + k_cols]
+
+                        # Check for an exact match of the kernel shape
+                        if np.array_equal(convolvedArea, kernel):
+                            # If a match is found, copy the original intensities into the output matrix
+                            outputMat[i:i + k_rows, j:j + k_cols] = self.imMat[i:i + k_rows, j:j + k_cols]
+                            matchCount += 1
+
+                matConvolvedTotal += outputMat
+
+            print(f"{matchCount} matches for {key} kernels")
+            matrixDictionary[key] = matConvolvedTotal
+
+            if printImages:
+                Investigate().plotMatClear(matConvolvedTotal,f"{key} kernel convolution")
+
+        return matrixDictionary
+
+
+    def checKernelType(self, kernelType):
+
+        print(f"The kernel type is {kernelType}")
+
+        rowNum, colNum = self.imMat.shape
+        image_binary = np.where(self.imMat > 0, 1, 0)
+
+        list_countij = []
+
+        if kernelType == "single_pixel":
+            kernels = kernelDict()["single_pixel"]
+            for kernel in kernels:
+                # outputMat = np.zeros(self.imMat.shape)
+                k_rows, k_cols = kernel.shape
+
+                # Convolve the image
+                for i in range(rowNum - k_rows + 1):
+                    for j in range(colNum - k_cols + 1):
+                        # Consider areas of the same size as the kernel:
+                        convolvedArea = image_binary[i:i + k_rows, j:j + k_cols]
+
+                        # Check for an exact match of the kernel shape
+                        if np.array_equal(convolvedArea, kernel):
+                            # If a match is found, copy the original intensities into the output matrix
+                            # outputMat[i:i + k_rows, j:j + k_cols] = self.imMat[i:i + k_rows, j:j + k_cols]
+                            singlePixelVal = self.imMat[i+1, j+1]
+                            # print(singlePixelVal)
+
+                            # TODO improve how this is counted
+
+                            if 0 < singlePixelVal <= 140:
+                                list_countij.append([1,i+1,j+1])
+                            elif 140 < singlePixelVal <= 250:
+                                list_countij.append([2, i + 1, j + 1])
+                            elif 250 < singlePixelVal:
+                                list_countij.append([3, i + 1, j + 1])
+
+
+            # print(list_countij)
+            return list_countij
+
+
+
+
+
+    def CheckKernelList(self,kernelList,title="",printImages=False):
+        image_binary = np.where(self.imMat > 0, 1, 0)
+        rowNum, colNum = self.imMat.shape
+
+        matrixDictionary = {}
+
+        matConvolvedTotal = np.zeros(self.imMat.shape)
+        matchCount = 0
+
+        for kernel in kernelList:
+            outputMat = np.zeros(self.imMat.shape)
+            k_rows, k_cols = kernel.shape
+
+            # Convolved the image
+            for i in range(rowNum - k_rows + 1):
+                for j in range(colNum - k_cols + 1):
+                    # Consider areas of the same size as the kernel:
+                    convolvedArea = image_binary[i:i + k_rows, j:j + k_cols]
+
+                    # Check for an exact match of the kernel shape
+                    if np.array_equal(convolvedArea, kernel):
+                        # If a match is found, copy the original intensities into the output matrix
+                        outputMat[i:i + k_rows, j:j + k_cols] = self.imMat[i:i + k_rows, j:j + k_cols]
+                        matchCount += 1
+
+            matConvolvedTotal += outputMat
+
+        print(f"{matchCount} matches")
+
+        if printImages:
+
+            fig, ax = plt.subplots(figsize=(8, 8))
+            # Get indices of nonzero elements
+            y, x = np.nonzero(matConvolvedTotal)
+            values = matConvolvedTotal[y, x]  # Get intensity values for color mapping
+
+            scatter = ax.scatter(x, y, c=values, cmap='plasma', s=5, edgecolors='white', linewidth=0.2)
+            plt.colorbar(scatter, ax=ax, label="Intensity")
+            # Invert y-axis to match image orientation
+            ax.set_ylim(ax.get_ylim()[::-1])
+
+            # Set xticks and yticks to correspond to matrix indices
+            ax.set_xticks(np.linspace(0, self.imMat.shape[1], 10))  # Set 10 evenly spaced ticks
+            ax.set_yticks(np.linspace(0, self.imMat.shape[0], 10))
+
+            ax.set_xticklabels([int(i) for i in np.linspace(0, self.imMat.shape[1], 10)])  # Ensure integer labels
+            ax.set_yticklabels([int(i) for i in np.linspace(0, self.imMat.shape[0], 10)])
+
+            ax.set_xlabel("X Index")
+            ax.set_ylabel("Y Index")
+            ax.set_title(title)
+            ax.set_aspect('equal')  # Ensure square pixels
+            plt.show()
+
+        return matConvolvedTotal
+
+    class IterativeRemoval:
+        "The idea of this code is to try and intelligently search from top down to remove elements"
+        "For example elements of order 180 on the ADU are likely to be either a single pixel single photon hit"
+        "or in the case that there is an adjacent photon of similar order than a double photon hit"
+        "KEY point for this idea is we remove these from the image. This hence demands some human input into what"
+        "the ADU value of that regime would look like"
+
+
+# TODO consider more complex non isolated setupsh
+# TODO Try train a model to learn how to find what a photon is
+
+
+
+if __name__ == "__main__":
+
+
+    def compareRawToSPSP():
+        spc = PhotonCounting(high_intensity_points)
+        matDict = spc.checkKernels(printImages=False)
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1), plt.imshow(high_intensity_points, cmap='hot'), plt.title(f"Image 8 Thresholded")
+        plt.subplot(1, 2, 2), plt.imshow(matDict["double_pixel"], cmap='hot'), plt.title(f"Double Pixel Hits")
+        plt.show()
+
+
+    # compareRawToSPSP()
+
+
+    def testMethods():
+        spc = PhotonCounting(high_intensity_points)
+        spc.checKernelType("single_pixel")
+
+
+    testMethods()
+
+
+    # ped8 = Pedastal(array8Test,"Image 8",bins=150,pedstalCutoffOffset=15)
+    #
+    # ped8.findGaussian()
+    # ped8.printHistogram()
+
+    pass

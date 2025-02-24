@@ -48,16 +48,3 @@ class Bragg:
         Visualise.spectrum(df_spectrum_grouped)
 
 # TODO: remember to include fano factor for intensity of image element
-
-
-
-Bragg_littleTest = np.array([
-    [30,80,10,5],
-    [80,10,5,1],
-    [80,10,5,1],
-    [30,80,10,5]
-])
-
-bragg_image8 = Bragg(Bragg_littleTest)
-
-bragg_image8.simpleWithDarkImage()
