@@ -828,7 +828,7 @@ if __name__ == '__main__':
         plt.show()
 
 
-    testPlot()
+    # testPlot()
 
     def showTwoLines():
         linesMatLeft = Calibrate(imTest, None).matrixWithLines(Aoptimised=6.613794078473409e-05, Boptimised=862,
@@ -836,9 +836,9 @@ if __name__ == '__main__':
         linesMatRight = Calibrate(imTest, None).matrixWithLines(Aoptimised=7.063102423636962e-05, Boptimised=862,
                                                                 Coptimised=1418, plotLines=False)
 
-        plt.imshow(imVeryClear + np.where(linesMatLeft>0,np.max(imVeryClear),0) + np.where(linesMatRight>0,np.max(imVeryClear),0)), plt.show()
+        plt.imshow(array8Test + np.where(linesMatLeft>0,np.max(array8Test),0) + np.where(linesMatRight>0,np.max(array8Test),0)), plt.show()
 
-    # showTwoLines()
+    showTwoLines()
 
     def testBragg():
         bragg = Bragg(crystal_pitch=crysPitch,crystal_roll=CrysRoll,

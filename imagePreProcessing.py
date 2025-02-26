@@ -1,15 +1,15 @@
 import numpy as np
 import matplotlib
-
-matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import h5py
 import itertools
 import torch
-from torch.nn import AvgPool2d,MaxPool2d
+from torch.nn import AvgPool2d, MaxPool2d
 import cv2
+matplotlib.use('TkAgg')
 
-list_darkData = [0,3,5,9,10,12,13,15,18]
+
+list_darkData = [0, 3, 5, 9, 10, 12, 13, 15, 18]
 
 
 def loadData():
@@ -36,6 +36,7 @@ def loadData():
 
     return image_data
 
+
 class Investigate:
 
     @staticmethod
@@ -54,14 +55,13 @@ class Investigate:
         row_indices = -np.arange(len(row_sums))
 
         plt.figure(figsize=(8, 5))
-        plt.scatter(row_sums,row_indices, marker='.', color='b', label='Row Sum with - the index',s=5)
+        plt.scatter(row_sums, row_indices, marker='.', color='b', label='Row Sum with - the index', s=5)
         plt.ylabel("Row Index")
         plt.xlabel("Total Sum")
         plt.title(f"Row Sum for image {index}")
         plt.grid(True, linestyle='--', alpha=0.6)
         plt.legend()
         plt.show()
-
 
     @staticmethod
     def printIntenstiy_vertically(image_data_matrix, index):
@@ -86,12 +86,12 @@ class Investigate:
             column_sums_noOutliers = np.delete(column_sums, outlier_indices)
             column_indices_noOutliers = np.delete(column_indices, outlier_indices)
 
-            return column_sums_noOutliers,column_indices_noOutliers
+            return column_sums_noOutliers, column_indices_noOutliers
 
         colsums_noOutliers, colIndices_noOutliers = removeOutliers()
 
         plt.figure(figsize=(8, 5))
-        plt.scatter(colIndices_noOutliers, colsums_noOutliers, marker='.',color='b', label='Column Sum',s=5)
+        plt.scatter(colIndices_noOutliers, colsums_noOutliers, marker='.', color='b', label='Column Sum', s=5)
         plt.xlabel("Column Index")
         plt.ylabel("Total Sum")
         plt.title(f"Column Sum for image {index}")
@@ -108,7 +108,7 @@ class Investigate:
         col_indices = np.arange(len(col_sums))
 
         plt.figure(figsize=(8, 5))
-        plt.scatter(col_indices, col_sums, marker='.',color='b', label='Column Sum',s=5)
+        plt.scatter(col_indices, col_sums, marker='.', color='b', label='Column Sum', s=5)
         plt.xlabel("Column Index")
         plt.ylabel("Total Sum")
         plt.title(f"Column Sum for image {index}")
@@ -116,58 +116,52 @@ class Investigate:
         plt.legend()
         plt.show()
 
-
-
     @staticmethod
-    def histogram(image_data_matrix, index,bins=150,logarithmic=True):
+    def histogram(image_data_matrix, index, bins=150, logarithmic=True):
         plt.hist(image_data_matrix.flatten(), bins)
         if logarithmic:
             plt.yscale('log')
         plt.title(f"Image {index} Raw Hist")
         plt.show()
 
-
-
     @staticmethod
     def viewAll():
 
-        imageData=loadData()
+        imageData = loadData()
 
         for num in range(10, len(imageData)):
             print(num)
             image_data_matrix_num = imageData[num]
-            Investigate.printImage(image_data_matrix_num,num)
-            Investigate.printIntenstiy_horizontally(image_data_matrix_num,num)
-            Investigate.printIntenstiy_vertically(image_data_matrix_num,num)
-            Investigate.histogram(image_data_matrix_num,num)
+            Investigate.printImage(image_data_matrix_num, num)
+            Investigate.printIntenstiy_horizontally(image_data_matrix_num, num)
+            Investigate.printIntenstiy_vertically(image_data_matrix_num, num)
+            Investigate.histogram(image_data_matrix_num, num)
 
     @staticmethod
-    def RemoveDarkImage(imageMat,darkImageMat,diagnostics=False):
+    def RemoveDarkImage(imageMat, darkImageMat, diagnostics=False):
 
         # Note if stored in uint16 (unsigned integers) a negative makes the values explode hence:
         removedDarkImageMat = imageMat.astype(np.int16) - darkImageMat.astype(np.int16)
         if diagnostics:
-            print("Shape",imageMat.shape)
-            print("maxVal",np.max(imageMat))
-            print("minVal",np.min(imageMat))
-            print("darkShape",darkImageMat.shape)
-            print("darkMaxVal",np.max(darkImageMat))
-            print("darkMinVal",np.min(darkImageMat))
-            print("removedDarkShape",removedDarkImageMat.shape)
-            print("removedDarkMaxVal",np.max(removedDarkImageMat))
-            print("removedDarkMinVal",np.min(removedDarkImageMat))
+            print("Shape", imageMat.shape)
+            print("maxVal", np.max(imageMat))
+            print("minVal", np.min(imageMat))
+            print("darkShape", darkImageMat.shape)
+            print("darkMaxVal", np.max(darkImageMat))
+            print("darkMinVal", np.min(darkImageMat))
+            print("removedDarkShape", removedDarkImageMat.shape)
+            print("removedDarkMaxVal", np.max(removedDarkImageMat))
+            print("removedDarkMinVal", np.min(removedDarkImageMat))
 
-        return np.where(removedDarkImageMat > 0,removedDarkImageMat,0)
+        return np.where(removedDarkImageMat > 0, removedDarkImageMat, 0)
 
-    def darkImageRemoval(self,image_data_matrix,index,listDarkData,bins=150):
+    def darkImageRemoval(self, image_data_matrix, index, listDarkData, bins=150):
 
         for darknum in listDarkData:
             print("The Dark image is {}".format(darknum))
             darkMat = loadData()[darknum]
 
-
-
-            dark_image_data_matrix = self.RemoveDarkImage(image_data_matrix,darkMat)
+            dark_image_data_matrix = self.RemoveDarkImage(image_data_matrix, darkMat)
 
             plt.imshow(dark_image_data_matrix, cmap="hot")
             plt.colorbar(label="Intensity")
@@ -180,7 +174,7 @@ class Investigate:
             plt.show()
 
     @staticmethod
-    def plotMatClear(ImageMat,title,logarithmic=False):
+    def plotMatClear(ImageMat, title, logarithmic=False,withLines=False):
 
         fig, ax = plt.subplots(figsize=(8, 8))
         # Get indices of nonzero elements
@@ -205,7 +199,39 @@ class Investigate:
             plt.yscale('log')
         ax.set_title(title)
         ax.set_aspect('equal')  # Ensure square pixels
+
+        if withLines:
+            y_vals = np.linspace(0, ImageMat.shape[0], 1000)
+
+            # Compute x values for both parabolas
+            A1 = 6.613794078473409e-05
+            B1 = 862
+            C1 = 1278
+            A2 = 7.063102423636962e-05
+            B2 = 862
+            C2 = 1418
+
+            x1_vals = A1 * (y_vals - B1) ** 2 + C1
+            x2_vals = A2 * (y_vals - B2) ** 2 + C2
+
+            ax.plot(x1_vals, y_vals, color='cyan', linewidth=1.5, linestyle='--', label='Beta Line')
+            ax.plot(x2_vals, y_vals, color='magenta', linewidth=1.5, linestyle='--', label='Alpha Line')
+            ax.legend()
+
         plt.show()
+
+    @staticmethod
+    def histogramsSubSquares(imageMatrix, iStart, iLength, jStart, jLength, title, bins=150, logarithmic=False,thresholdADU=0):
+
+        imSquare = imageMatrix[iStart:iStart + iLength, jStart:jStart + jLength]
+        vals = imSquare.flatten()
+        vals = vals[vals > thresholdADU]
+        plt.hist(vals, bins)
+        if logarithmic:
+            plt.yscale('log')
+        plt.title(title)
+        plt.show()
+
 
 class Clean:
 
@@ -232,10 +258,9 @@ class Clean:
         # Without this following step the function permanently alters the input
         imageMatrix_copy = np.copy(imageMatrix)
 
-        imageMatrix_copy[:200, :] = 0
+        imageMatrix_copy[:rowHigher, :] = 0
 
         return imageMatrix_copy
-
 
     @staticmethod
     def createBinaryMatrix(imageMatrix, threshold):
@@ -259,12 +284,11 @@ class Clean:
 
     @staticmethod
     def createNormalisedLogMatrix(imMatrix):
-
         imMatrix_copy = np.copy(imMatrix)
 
         imMatrix_normalised = imMatrix_copy / np.max(imMatrix_copy)
 
-        log_imMatrix = np.log(imMatrix_normalised+1)
+        log_imMatrix = np.log(imMatrix_normalised + 1)
 
         return log_imMatrix
 
@@ -276,18 +300,17 @@ class Clean:
 
 
 class Convolve:
-    def __init__(self,imageMatrix,kernelSizeTuple):
+    def __init__(self, imageMatrix, kernelSizeTuple):
         self.imageMatrix = imageMatrix
-        self.kernelSizeTuple=kernelSizeTuple
+        self.kernelSizeTuple = kernelSizeTuple
         self.paddingTuple = (int(int(self.kernelSizeTuple[0] - 1) / 2), int(int(self.kernelSizeTuple[1] - 1) / 2))
 
     def avgPool(self):
-
         pool = AvgPool2d(kernel_size=self.kernelSizeTuple,
                          padding=self.paddingTuple, stride=1)
         return pool(torch.tensor(self.imageMatrix, dtype=torch.float32).unsqueeze(0).unsqueeze(0)).reshape(2048, 2048)
 
-    def maxPool(self,):
+    def maxPool(self, ):
         pool = MaxPool2d(kernel_size=self.kernelSizeTuple,
                          padding=self.paddingTuple, stride=1)
         return pool(torch.tensor(self.imageMatrix, dtype=torch.float32).unsqueeze(0).unsqueeze(0)).reshape(2048, 2048)
@@ -297,49 +320,119 @@ imData = loadData()
 
 num = 8
 array8Test = imData[8]
-high_intensity_points = Clean.matrixAboveThreshold(array8Test,100)
-high_intensity_points_binary = Clean.createBinaryMatrix(array8Test,107)
-doubledThresholdedPoints = Clean.createNormalisedLogMatrix(np.where((array8Test > 100) & (array8Test < 200),array8Test,0))
+high_intensity_points = Clean.matrixAboveThreshold(array8Test, 100)
+high_intensity_points_binary = Clean.createBinaryMatrix(array8Test, 107)
+doubledThresholdedPoints = Clean.createNormalisedLogMatrix(
+    np.where((array8Test > 100) & (array8Test < 200), array8Test, 0))
 
-doubledThresholdedPointsBinary = Clean.createBinaryMatrix(doubledThresholdedPoints,0)
+doubledThresholdedPointsBinary = Clean.createBinaryMatrix(doubledThresholdedPoints, 0)
 # plt.imshow(doubledThresholdedPointsBinary,cmap="hot"),plt.title(f"Thresholded Image 8 (200>I_pixel>100) Binary"),plt.show()
 
 # Try with removed top
 # doubledThresholdedPoints = Clean.removeTopData(doubledThresholdedPoints,rowHigher=400)
 
-ktuple = (11,3)
+ktuple = (11, 3)
 lbThreshold = 10
 ubThreshold = 25
 
-imTensor = np.asarray(Convolve(high_intensity_points,ktuple).avgPool())
-imTensorThresholded = np.where((imTensor > 5) & (imTensor < 30),imTensor,0)
+imTensor = np.asarray(Convolve(high_intensity_points, ktuple).avgPool())
+imTensorThresholded = np.where((imTensor > 5) & (imTensor < 30), imTensor, 0)
 
-imVeryClear = np.asarray(Convolve(high_intensity_points,(21,5)).avgPool())
-
+imVeryClear = np.asarray(Convolve(high_intensity_points, (21, 5)).avgPool())
 
 imTest = high_intensity_points
-imClear = np.asarray(Convolve(imTest,ktuple).avgPool())
+imClear = np.asarray(Convolve(imTest, ktuple).avgPool())
 
-imTestBinary = Clean.createBinaryMatrix(imTest,0)
-
-
+imTestBinary = Clean.createBinaryMatrix(imTest, 0)
 
 if __name__ == '__main__':
-
-    def plotRawMatThresholdedMat():
+    def plotRawMatThresholdedMat(indexOfInterest=8):
         plt.figure(figsize=(10, 5))
-        plt.subplot(1, 2, 1), plt.imshow(array8Test, cmap='hot'), plt.title(f"Image 8 Raw")
-        plt.subplot(1, 2, 2), plt.imshow(high_intensity_points, cmap='hot'), plt.title(f"Image 8 Thresholded above 100")
+        plt.subplot(1, 2, 1), plt.imshow(imData[indexOfInterest], cmap='hot'), plt.title(f"Image 8 Raw")
+        thr = 90
+        plt.subplot(1, 2, 2), plt.imshow(Clean.matrixAboveThreshold(imData[indexOfInterest], thr), cmap='hot'), plt.title(
+            f"Image 8 Thresholded above {thr}")
         plt.show()
 
-    # Investigate.plotMatClear(Clean.matrixAboveThreshold(imData[9],100),"Image 9 thresholded above 100")
+    def plotThreeDeviations(indexOfInterest=8,zoomArea=(500,1000,500,1000)):
 
-    # Investigate().histogram(imData[8],8,150,logarithmic=False)
+        mean = 60
+        sigma = 10
+        imMat = imData[indexOfInterest]
+
+        mat_minusMean = imMat.astype(np.int16) - mean
+        mat_minusMean[mat_minusMean < 0] = 0
+
+        imMat1Sigma = np.where(mat_minusMean > sigma, mat_minusMean, 0)[zoomArea[0]:zoomArea[1], zoomArea[2]:zoomArea[3]]
+        imMat2Sigma = np.where(mat_minusMean > 2 * sigma, mat_minusMean, 0)[zoomArea[0]:zoomArea[1], zoomArea[2]:zoomArea[3]]
+        imMat3Sigma = np.where(mat_minusMean > 3 * sigma, mat_minusMean, 0)[zoomArea[0]:zoomArea[1], zoomArea[2]:zoomArea[3]]
+        plt.figure(figsize=(15, 5))
+        plt.subplot(1, 3, 1), plt.imshow(imMat1Sigma, cmap='hot'), plt.title(f"Image {indexOfInterest} thresholded above 1 sigma")
+        plt.subplot(1, 3, 2), plt.imshow(imMat2Sigma,cmap='hot'), plt.title(f"Image {indexOfInterest} thresholded above 2 sigma")
+        plt.subplot(1, 3, 3), plt.imshow(imMat3Sigma, cmap='hot'), plt.title(f"Image {indexOfInterest} thresholded above 3 sigma")
+        plt.show()
+
+    # plotThreeDeviations(1,(500,600,500,600))
+
+    # plotRawMatThresholdedMat(1)
+
+
+    def clearPlotInvestigations(indexOfInterest=8,lb=90,ub=0):
+
+        matrixOfInterest = imData[indexOfInterest]
+
+        if ub != 0:
+            MoI = np.where((matrixOfInterest > lb) & (matrixOfInterest < ub), matrixOfInterest, 0)
+            title = f"Image {indexOfInterest} plotted thresholdeded between {lb} and {ub}"
+        else:
+            MoI = np.where(matrixOfInterest > lb, matrixOfInterest, 0)
+            title = f"Image {indexOfInterest} plotted thresholdeded above {lb}"
+
+        Investigate.plotMatClear(MoI,title,withLines=True)
+
+
+    # clearPlotInvestigations(1,300)
+    # for i in range(0,20):
+    #     clearPlotInvestigations(i,100)
+
+
+    def histograms(indexOfInterest=8):
+        # Thresholded8Above90 = Clean.matrixAboveThreshold(array8Test, 80)
+        # flattenedvals = Thresholded8Above90.flatten()
+        # nonzeroVals = flattenedvals[flattenedvals != 0]
+        # plt.hist(nonzeroVals, bins=100)
+        # plt.yscale('log')
+        # plt.title(f"Image 8 Thresholded above 90 Hist")
+        # plt.show()
+
+
+        iIndexStart = 500
+        iIndexEnd = 1750
+        jIndexStart = 50
+        jIndexEnd = 1150
+
+        titleH = f"Image {indexOfInterest} Histogram for i∊[{iIndexStart},{iIndexEnd}] and j∊[{jIndexStart},{jIndexEnd}] "
+
+        Investigate().histogramsSubSquares(imageMatrix=imData[indexOfInterest],
+                                           iStart=iIndexStart,
+                                           iLength=iIndexEnd - iIndexStart,
+                                           jStart=jIndexStart,
+                                           jLength=jIndexEnd - jIndexStart,
+                                           title=titleH,
+                                           bins=300,
+                                           logarithmic=True,
+                                           thresholdADU=0
+                                           )
+
+
+    # histograms(1)
+
     # plt.imshow(Clean.matrixAboveThreshold(array8Test,90), cmap="hot"), plt.title(f"image 8 thresholded above 90"), plt.show()
-    plt.imshow(Clean.matrixAboveThreshold(imData[18], 90), cmap="hot"), plt.title(f"image 18 thresholded above 90"), plt.show()
+    # plt.imshow(Clean.matrixAboveThreshold(imData[18], 90), cmap="hot"), plt.title(f"image 18 thresholded above 90"), plt.show()
     # plt.imshow(imVeryClear, cmap="hot"), plt.title(f"imVeryClear"), plt.show()
     # plt.imshow(doubledThresholdedPoints, cmap="hot"), plt.title(f"Thresholded Image 8 (200>I_pixel>100"), plt.show()
     # plt.imshow(imTensorThresholded),plt.title(f"Pooled Image {ktuple} greater than {lbThreshold} less than {ubThreshold}"),plt.show()
 
-
+    plt.imshow(Clean.removeTopData(imVeryClear,200),cmap='hot')
+    plt.show()
     pass

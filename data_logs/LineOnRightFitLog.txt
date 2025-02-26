@@ -1,0 +1,42 @@
+The following is based off fitting of image 8 thresholded between 100 and 200
+
+------------------------------
+2025-02-11 14:44:31
+aBounds = (1e-05, 0.0001)
+bBounds = (700, 1024)
+cBounds = (1400, 1440)
+Optimised A = 5.5e-05, B = 8.6e+02
+Loss = -58
+Gaussian not fitted due to RuntimeError
+------------------------------
+2025-02-11 14:46:33
+aBounds = (1e-05, 0.0001)
+bBounds = (700, 1024)
+cBounds = (1410, 1430)
+Optimised A = 5.5e-05, B = 8.6e+02
+Loss = -58
+Gaussian not fitted due to RuntimeError
+------------------------------
+2025-02-11 14:50:24
+aBounds = (1e-05, 0.0001)
+bBounds = (700, 1024)
+cBounds = (1380, 1460)
+Optimised A = 7.1e-05, B = 8.6e+02
+Loss = -39
+
+------------------------------
+2025-02-11 15:00:19
+aBounds = (1e-05, 0.0001)
+bBounds = (700, 1024)
+cBounds = (1400, 1440)
+Optimised A = 5.5e-05, B = 8.6e+02
+Loss = -58
+Gaussian not fitted due to RuntimeError
+------------------------------
+2025-02-11 15:09:52
+aBounds = (1e-05, 0.0001)
+bBounds = (700, 1024)
+cBounds = (1380, 1460)
+Optimised A = 7.063102423636962e-05, B = 862.0
+Loss = -39.28856707160155
+Gaussian fitted successfully

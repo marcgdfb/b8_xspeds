@@ -1,0 +1,76 @@
+Aiming to find a loss of - 4048 IE both lines perfectly overlap
+------------------------------
+2025-02-11 17:02:21
+ncrysxBounds = (None, None), ncrysyBounds = (None, None)
+ncamxBounds = (0, None), ncamyBounds = (None, None)
+rcamBounds = (0.08, 0.4), thetaCamBounds = (None, None)
+Optimised n crystal = [0. 0. 1.]
+Optimised n camera = [1. 0. 1.]
+Optimised r camera = [0.2        1.88       3.14159265]
+Loss = -72.0
+------------------------------
+2025-02-11 17:19:51
+ncrysxBounds = (None, None), ncrysyBounds = (None, None)
+ncamxBounds = (0, None), ncamyBounds = (None, None)
+rcamBounds = (0.08, 0.4), thetaCamBounds = (None, None)
+Optimised n crystal = [8.03751792e-07 2.12431827e-04 1.00000000e+00]
+Optimised n camera = [9.99473086e-01 1.34443934e-06 1.00000000e+00]
+Optimised r camera = [0.20143094 1.87999974 3.14159265]
+Loss = -230.0
+------------------------------
+2025-02-11 18:31:58
+ncrysxBounds = (None, None), ncrysyBounds = (None, None)
+ncamxBounds = (0, None), ncamyBounds = (0, 0)
+rcamBounds = (0.08, 0.25), thetaCamBounds = (1.88, 1.88)
+Optimised n crystal = [-5.47953826e-05  4.90860470e-05  1.00000000e+00]
+Optimised n camera = [1.00494591 0.         1.        ]
+Optimised r camera = [0.20097117 1.88       3.14159265]
+Loss = -246.0
+------------------------------
+2025-02-13 18:43:24
+crystal pitch bounds = (None, None), crystal roll bounds = (None, None)
+camera pitch bounds = (0, None), camera roll bounds = (0, 0)
+rcamBounds = (0.08, 0.25)
+optimised rystal pitch = -6.120306912807198e-05, n crystal roll = -1.2852834454814307e-05
+optimised camera pitch = 0.780098495349171, n camera roll = 0.0
+optimised rcam spherical = [0.20008739 1.88       3.14159265]
+Optimised n crystal = [-6.12030691e-05  1.65195354e-10  1.00000000e+00]
+Optimised n camera = [0.70334944 0.         1.        ]
+Optimised r camera = [0.20008739 1.88       3.14159265]
+Loss = -247.0
+------------------------------
+2025-02-14 15:56:21
+crystal pitch bounds = (None, None), crystal roll bounds = (-0.002, 0.003)
+camera pitch bounds = (0, None), camera roll bounds = (0, 0)
+rcamBounds = (0.18, 0.21)
+optimised rystal pitch = -0.7137182750919008, n crystal roll = -0.002
+optimised camera pitch = 1.21816128615, n camera roll = 0.0
+optimised rcam spherical = [0.1896856  2.595      3.14159265]
+Optimised n crystal = [-0.65464906  0.00151186  0.75593143]
+Optimised n camera = [ 0.9384659 -0.         0.3453719]
+Optimised r camera = [0.1896856  2.595      3.14159265]
+Loss = -203.0
+------------------------------
+2025-02-14 18:10:02
+crystal pitch bounds = (None, None), crystal roll bounds = (None, None)
+camera pitch bounds = (0, None), camera roll bounds = (None, None)
+rcamBounds = (0.07, 0.15)
+optimised rystal pitch = -0.3445092569785031, n crystal roll = 0.018058061625517555
+optimised camera pitch = 0.7965766171590669, n camera roll = -0.005201895746676618
+optimised rcam spherical = [0.08378234 2.567      3.14159265]
+Optimised n crystal = [-0.33773481 -0.01699607  0.94108784]
+Optimised n camera = [0.7149668  0.00363693 0.69914895]
+Optimised r camera = [0.08378234 2.567      3.14159265]
+Loss = -6290.0
+------------------------------
+2025-02-14 20:36:21
+crystal pitch bounds = (None, None), crystal roll bounds = (None, None)
+camera pitch bounds = (0, None), camera roll bounds = (None, None)
+rcamBounds = (0.07, 0.15)
+optimised crystal pitch = -0.3444672207603088, n crystal roll = 0.018114148603524255
+optimised camera pitch = 0.7950530342947064, n camera roll = -0.005323879756451509
+optimised rcam spherical = [0.08395021 2.567      3.14159265]
+Optimised n crystal = [-0.33769524 -0.01704911  0.94110108]
+Optimised n camera = [0.71390074 0.00372801 0.70023698]
+Optimised r camera = [0.08395021 2.567      3.14159265]
+Loss = -6897.5
