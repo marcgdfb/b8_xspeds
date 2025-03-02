@@ -221,7 +221,8 @@ class Investigate:
         plt.show()
 
     @staticmethod
-    def histogramsSubSquares(imageMatrix, iStart, iLength, jStart, jLength, title, bins=150, logarithmic=False,thresholdADU=0):
+    def histogramsSubSquares(imageMatrix, iStart, iLength, jStart, jLength, title, bins=150, logarithmic=False,thresholdADU=0,
+                             verticalLineVal=0):
 
         imSquare = imageMatrix[iStart:iStart + iLength, jStart:jStart + jLength]
         vals = imSquare.flatten()
@@ -229,6 +230,8 @@ class Investigate:
         plt.hist(vals, bins)
         if logarithmic:
             plt.yscale('log')
+        if verticalLineVal != 0:
+            plt.axvline(x=verticalLineVal)
         plt.title(title)
         plt.show()
 
@@ -376,6 +379,18 @@ if __name__ == '__main__':
 
     # plotRawMatThresholdedMat(1)
 
+    def plotRawDoubleThresholded(indexOfInterest=8,lb=90,ub=110):
+        matrixOfInterest = imData[indexOfInterest]
+        doub_thr_MoI = np.where((matrixOfInterest > lb) & (matrixOfInterest < ub), matrixOfInterest, 0)
+
+        title = f"Image {indexOfInterest} plotted thresholdeded between {lb} and {ub}"
+        plt.imshow(doub_thr_MoI)
+        plt.title(title)
+        plt.show()
+
+    plotRawDoubleThresholded(8,90,3000)
+
+
 
     def clearPlotInvestigations(indexOfInterest=8,lb=90,ub=0):
 
@@ -391,12 +406,12 @@ if __name__ == '__main__':
         Investigate.plotMatClear(MoI,title,withLines=True)
 
 
-    # clearPlotInvestigations(1,300)
+    # clearPlotInvestigations(9,55,60)
     # for i in range(0,20):
     #     clearPlotInvestigations(i,100)
 
 
-    def histograms(indexOfInterest=8):
+    def histograms(indexOfInterest=8,verticalLine=0):
         # Thresholded8Above90 = Clean.matrixAboveThreshold(array8Test, 80)
         # flattenedvals = Thresholded8Above90.flatten()
         # nonzeroVals = flattenedvals[flattenedvals != 0]
@@ -419,13 +434,14 @@ if __name__ == '__main__':
                                            jStart=jIndexStart,
                                            jLength=jIndexEnd - jIndexStart,
                                            title=titleH,
-                                           bins=300,
+                                           bins=200,
                                            logarithmic=True,
-                                           thresholdADU=0
+                                           thresholdADU=0,
+                                           verticalLineVal=verticalLine
                                            )
 
+    # histograms(0)
 
-    # histograms(1)
 
     # plt.imshow(Clean.matrixAboveThreshold(array8Test,90), cmap="hot"), plt.title(f"image 8 thresholded above 90"), plt.show()
     # plt.imshow(Clean.matrixAboveThreshold(imData[18], 90), cmap="hot"), plt.title(f"image 18 thresholded above 90"), plt.show()
@@ -433,6 +449,8 @@ if __name__ == '__main__':
     # plt.imshow(doubledThresholdedPoints, cmap="hot"), plt.title(f"Thresholded Image 8 (200>I_pixel>100"), plt.show()
     # plt.imshow(imTensorThresholded),plt.title(f"Pooled Image {ktuple} greater than {lbThreshold} less than {ubThreshold}"),plt.show()
 
-    plt.imshow(Clean.removeTopData(imVeryClear,200),cmap='hot')
-    plt.show()
+    # plt.imshow(Clean.removeTopData(imVeryClear,200),cmap='hot')
+    # plt.show()
+
+
     pass

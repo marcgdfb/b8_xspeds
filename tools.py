@@ -336,3 +336,11 @@ class Visualise:
 def append_to_file(file_path, text):
     with open(file_path, "a", encoding="utf-8") as file:
         file.write("\n"+ text)
+
+
+def sorted_keys_by_value(dictionary):
+    """
+    Takes a dictionary "dictionary" and returns a list of the keys sorted by value in descending order
+    """
+    return sorted(dictionary, key=dictionary.get, reverse=True)
+
