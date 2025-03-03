@@ -337,6 +337,14 @@ def append_to_file(file_path, text):
     with open(file_path, "a", encoding="utf-8") as file:
         file.write("\n"+ text)
 
+class Append_to_file:
+    def __init__(self, file_path):
+        self.file_path = file_path
+
+    def append(self,text):
+        with open(self.file_path, "a", encoding="utf-8") as file:
+            file.write("\n" + text)
+
 
 def sorted_keys_by_value(dictionary):
     """

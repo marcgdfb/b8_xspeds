@@ -1,10 +1,16 @@
+import os
 from pedestal_engine_v2 import *
 from tools import *
 from testImages import *
 
+im8_filepath = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\image_8"
 
-# In kernel Dict version two I want to accomodate for diagonals
+# TODO: add some more common shapes:
+# line of 3
+# shape of 5
+# produce an algorithm that will search with shapes and save array (in reduced scheme) in data logs
 
+# TODO: can generalise all rotated cases. Use i instead of a,b,c,d,e for dictionary and the code for the 3 pixel and 5 pixel is the exact same
 
 def kernelDict():
     def single_pixel():
@@ -73,13 +79,51 @@ def kernelDict():
             "masks": [qp_mask_1],
         }
 
-    # todo: try in a line
+    def quintuple_pixel():
+        quint_kernel_1 = np.array([[0, 0, 0, 0, 0],
+                                [0, 1, 1, 1, 0],
+                                [0, 0, 1, 1, 0],
+                                [0, 0, 0, 0, 0]])
+        quint_kernel_2 = np.rot90(quint_kernel_1)
+        quint_kernel_3 = np.rot90(quint_kernel_2)
+        quint_kernel_4 = np.rot90(quint_kernel_3)
+
+        quint_mask_1 = np.array([[0, 1, 1, 1, 0],
+                              [1, 0, 0, 0, 1],
+                              [0, 1, 0, 0, 1],
+                              [0, 0, 1, 1, 0]])
+        quint_mask_2 = np.rot90(quint_mask_1)
+        quint_mask_3 = np.rot90(quint_mask_2)
+        quint_mask_4 = np.rot90(quint_mask_3)
+
+        return {
+            "kernels": [quint_kernel_1, quint_kernel_2, quint_kernel_3, quint_kernel_4],
+            "masks": [quint_mask_1, quint_mask_2, quint_mask_3, quint_mask_4],
+        }
+
+    def tp_line():
+        tp_line_kernel_1 = np.array([[0, 0, 0, 0,0],
+                                    [0, 1, 1, 1, 0],
+                                    [0, 0, 0, 0, 0]])
+        tp_line_kernel_2 = np.rot90(tp_line_kernel_1)
+
+        tp_line_mask_1 = np.array([[0, 1, 1, 1, 0],
+                                   [1, 0, 0, 0, 1],
+                                   [0, 1, 1, 1, 0]])
+        tp_line_mask_2 = np.rot90(tp_line_mask_1)
+
+        return {
+            "kernels": [tp_line_kernel_1, tp_line_kernel_2],
+            "masks": [tp_line_mask_1, tp_line_mask_2],
+        }
 
     return {
         "single_pixel": single_pixel(),
         "double_pixel": double_pixel(),
         "triple_pixel": triple_pixel(),
         "quadruple_pixel": quadruple_pixel(),
+        "quintuple_pixel": quintuple_pixel(),
+        "tp_line": tp_line(),
     }
 
 
@@ -103,7 +147,7 @@ kdic = kernelDict()
 
 class PhotonCounting:
     def __init__(self, indexOfInterest, no_photon_adu_thr=50, sp_adu_thr=180, dp_adu_thr=240,
-                 removeRows0To_=0, howManySigma_thr=2):
+                 removeRows0To_=0, howManySigma_thr=2,):
 
         def printVar():
             print("-" * 30)
@@ -119,6 +163,7 @@ class PhotonCounting:
         printVar()
 
         self.imMatRAW = loadData()[indexOfInterest]
+        self.index_of_interest = indexOfInterest
 
         if removeRows0To_ > 0:
             self.imMatRAW = self.imMatRAW[removeRows0To_:, :]
@@ -149,7 +194,7 @@ class PhotonCounting:
         self.howManySigma = howManySigma_thr
         self.imMat = np.where(self.imMatMeanRemoved > howManySigma_thr * self.sigmaPedestal, self.imMatMeanRemoved, 0)
 
-    def check_kernel_type(self, kernel_type, return_matrix=False, diagnostics=False,
+    def check_kernel_type(self, kernel_type,diagnostics=False,
                           report=False, image_matrix_replace=None):
         # Initialise Counts
         count_found = 0
@@ -176,20 +221,25 @@ class PhotonCounting:
             "list_ADU_sum": list_ADU_sum,
         }
 
-        KT = self.KernelTypes(self, outputDict_initialised, return_matrix=return_matrix,
+        KT = self.KernelTypes(self, outputDict_initialised,
                               diagnostics=diagnostics, image_matrix=image_matrix_replace)
 
         print("-" * 30)
         print(f"Investigating clusters of the form {kernel_type}")
 
         if kernel_type == "single_pixel":
-            outputDict = KT.single_pixel()
+            # pRemoved denotes points that have been checked are removed
+            outputDict, imMat_pRemoved = KT.single_pixel()
         elif kernel_type == "double_pixel":
-            outputDict = KT.double_pixel()
+            outputDict, imMat_pRemoved = KT.double_pixel()
         elif kernel_type == "triple_pixel":
-            outputDict = KT.triple_pixel()
+            outputDict, imMat_pRemoved = KT.triple_pixel()
         elif kernel_type == "quadruple_pixel":
-            outputDict = KT.quadruple_pixel()
+            outputDict, imMat_pRemoved = KT.quadruple_pixel()
+        elif kernel_type == "quintuple_pixel":
+            outputDict, imMat_pRemoved = KT.quintuple_pixel()
+        elif kernel_type == "tp_line":
+            outputDict, imMat_pRemoved = KT.tp_line()
         else:
             raise ValueError(f"Kernel type {kernel_type} not recognised")
 
@@ -203,12 +253,12 @@ class PhotonCounting:
             print(f"Number of elements with diagonal: {outputDict['count_withDiagonal']}")
             print("-" * 30)
 
-        return outputDict
+        return outputDict, imMat_pRemoved
 
-    def display_kernel_type(self, kernel_type, return_matrix=False, diagnostics=False,
+    def display_kernel_type(self, kernel_type, diagnostics=False,
                             report=False,bins=300,image_matrix_replace=None):
 
-        outputDict = self.check_kernel_type(kernel_type, return_matrix=return_matrix,
+        outputDict, imMat_pRemoved = self.check_kernel_type(kernel_type,
                                             diagnostics=diagnostics, report=report,
                                             image_matrix_replace=image_matrix_replace)
         list_ADU_sum = outputDict["list_ADU_sum"]
@@ -225,13 +275,75 @@ class PhotonCounting:
 
         plotADU_hist()
 
+    def kernelType_reducedMat(self,folder_filepath,filename,matrix_to_test=None):
+        """
+        Use all kernel types and reduce the matrix each time by feeding imCopy into the next kernel
+        search. The function will save each step for investigation and comparison to ensure that the
+        function is running as planned. The aim will be that the final matrix is only operated on as
+        the reduced matrix with just images.
+        :return:
+        """
+
+        kernel_dictionaries = kernelDict()
+        output_dictionaries = {}
+
+        if matrix_to_test is None:
+            imMat_pRemoved = self.imMat.copy()
+        else:
+            imMat_pRemoved = matrix_to_test.copy()
+
+        np.save(f"{folder_filepath}/{filename}_raw.npy", imMat_pRemoved)
+
+        for i,kernels in enumerate(kernel_dictionaries.keys()):
+            outputDict, imMat_pRemoved = self.check_kernel_type(kernels, diagnostics=False,report=True,image_matrix_replace=imMat_pRemoved)
+
+            # Storing the individual output dictionary
+            output_dictionaries[kernels] = outputDict
+
+            # Save the intermediate image
+            np.save(f"{folder_filepath}/{filename}_image{i}.npy", imMat_pRemoved)
+
+        # Save the final Image and a text file with initialised parameters:
+        np.save(f"{folder_filepath}/{filename}_final.npy",imMat_pRemoved)
+
+        def log_params():
+            txt_filepath = f"{folder_filepath}/{filename}_notes.txt"
+            atf = Append_to_file(txt_filepath)
+            app = atf.append
+            app("-" * 30)
+            app("Photon Countining Initialised Parameters:")
+            app(f"index of interest = {self.index_of_interest}")
+            app(f"no_p_adu_thr = {self.no_p_adu_thr}")
+            app(f"sp_adu_thr = {self.sp_adu_thr}")
+            app(f"dp_adu_thr = {self.dp_adu_thr}")
+            app(f"howManySigma = {self.howManySigma}")
+
+            app(f"Elements were removed with kernels in the following order:")
+            app(f"{kernel_dictionaries.keys()}")
+
+            for kernel in kernel_dictionaries.keys():
+                app("-" * 30)
+                app(f"{kernel}:")
+                app("-" * 30)
+                app(f"Number of found elements: {outputDict['count_found']}")
+                app(f"Number of found elements rejected: {outputDict['countReject']}")
+                app(f"Number of 1 photon elements: {outputDict['count_1photon']}")
+                app(f"Number of 2 photon elements: {outputDict['count_2photon']}")
+                app(f"Number of elements with more than 2 photons: {outputDict["count_morethan2"]}")
+                app(f"Number of perfect matches: {outputDict['countPerfect']}")
+                app(f"Number of elements with diagonal: {outputDict['count_withDiagonal']}")
+
+        log_params()
+
+        return output_dictionaries
+
+
     class KernelTypes:
-        def __init__(self, parentClass, initialisedOutputDict, return_matrix=False,
+        def __init__(self, parentClass, initialisedOutputDict,
                      diagnostics=False, image_matrix=None):
             """
             :param parentClass:
             :param initialisedOutputDict:
-            :param return_matrix:
             :param diagnostics:
             :param image_matrix: If we want to impose an image matrix over this we can do so here
             """
@@ -262,12 +374,14 @@ class PhotonCounting:
             self.list_countij = initialisedOutputDict["list_countij"]
             self.list_ADU_sum = initialisedOutputDict["list_ADU_sum"]
 
-            self.return_matrix = return_matrix
             self.diagnostics = diagnostics
 
         def single_pixel(self):
-            kdict = kernelDict()["single_pixel"]
 
+            # Initialising a copy of the image matrix to have elements removed once counted
+            image_copy = self.imMat.copy()
+
+            kdict = kernelDict()["single_pixel"]
             kernels = kdict["kernels"]
             masks = kdict["masks"]
 
@@ -284,6 +398,8 @@ class PhotonCounting:
                             continue
 
                         self.count_found += 1
+
+                        image_copy[i+1,j+1] = 0
 
                         singlePixelVal = self.imMat[i + 1, j + 1]
 
@@ -300,8 +416,6 @@ class PhotonCounting:
                         elif check_diagonals(convolvedArea, kernel, mask):
                             self.count_withDiagonal += 1
 
-                        if self.return_matrix:
-                            self.outputMat[i + 1, j + 1] = self.imMat[i:i + k_rows, j:j + k_cols]
 
                         if self.no_p_adu_thr < singlePixelVal <= self.sp_adu_thr:
                             self.list_countij.append([1, i + 1, j + 1])
@@ -316,24 +430,26 @@ class PhotonCounting:
                             if self.diagnostics:
                                 print(f"Found a 3 photon hit at i={i + 1},j={j + 1}")
 
-            if self.return_matrix:
-                return self.outputMat
-            else:
-                return {
-                    "count_found": self.count_found,
-                    "countReject": self.countReject,
-                    "count_1photon": self.count_1photon,
-                    "count_2photon": self.count_2photon,
-                    "count_morethan2": self.count_morethan2,
-                    "countPerfect": self.countPerfect,
-                    "count_withDiagonal": self.count_withDiagonal,
-                    "list_countij": self.list_countij,
-                    "list_ADU_sum": self.list_ADU_sum,
-                }
+            output_dict = {
+                "count_found": self.count_found,
+                "countReject": self.countReject,
+                "count_1photon": self.count_1photon,
+                "count_2photon": self.count_2photon,
+                "count_morethan2": self.count_morethan2,
+                "countPerfect": self.countPerfect,
+                "count_withDiagonal": self.count_withDiagonal,
+                "list_countij": self.list_countij,
+                "list_ADU_sum": self.list_ADU_sum,
+            }
+
+            return output_dict, image_copy
 
         def double_pixel(self):
-            kdict = kernelDict()["double_pixel"]
 
+            # Initialising a copy of the image matrix to have elements removed once counted
+            image_copy = self.imMat.copy()
+
+            kdict = kernelDict()["double_pixel"]
             kernels = kdict["kernels"]
             masks = kdict["masks"]
 
@@ -351,6 +467,7 @@ class PhotonCounting:
 
                         self.count_found += 1
 
+
                         if k_rows == 3:
                             # Horizontal case
                             # Value on the left
@@ -358,18 +475,16 @@ class PhotonCounting:
                             # Value on the Right
                             BVal = self.imMat[i + 1, j + 2]
 
-                            Aindexi = i + 1
-                            Aindexj = j + 1
-                            Bindexi = i + 1
-                            Bindexj = j + 2
+                            Aindexi,Aindexj = (i + 1,j + 1)
+                            Bindexi,Bindexj = (i + 1,j + 2)
+
                         elif k_rows == 4:
                             # Vertical Case
                             AVal = self.imMat[i + 1, j + 1]
                             BVal = self.imMat[i + 2, j + 1]
-                            Aindexi = i + 1
-                            Aindexj = j + 1
-                            Bindexi = i + 2
-                            Bindexj = j + 1
+
+                            Aindexi,Aindexj = (i + 1,j + 1)
+                            Bindexi,Bindexj = (i + 2,j + 1)
                         else:
                             print("The kernel Matrix did not have 3 or 4 rows")
                             print("k_rows = ", k_rows, " k_cols = ", k_cols)
@@ -377,6 +492,9 @@ class PhotonCounting:
                             print(kernel)
                             raise ValueError
 
+
+                        image_copy[Aindexi, Aindexj] = 0
+                        image_copy[Bindexi, Bindexj] = 0
                         totVal = AVal + BVal
 
                         self.list_ADU_sum.append(totVal)
@@ -391,10 +509,6 @@ class PhotonCounting:
                         # Match with diagonal
                         elif check_diagonals(convolvedArea, kernel, mask):
                             self.count_withDiagonal += 1
-
-
-                        if self.return_matrix:
-                            self.outputMat[i:i + k_rows, j:j + k_cols] = self.imMat[i:i + k_rows, j:j + k_cols]
 
                         elif totVal < self.sp_adu_thr:
                             self.count_1photon += 1
@@ -415,30 +529,31 @@ class PhotonCounting:
                                 print(totVal)
                                 print(self.imMat[i:i + k_rows, j:j + k_cols])
 
-            if self.return_matrix:
-                return self.outputMat
-            else:
-                return {
-                    "count_found": self.count_found,
-                    "countReject": self.countReject,
-                    "count_1photon": self.count_1photon,
-                    "count_2photon": self.count_2photon,
-                    "count_morethan2": self.count_morethan2,
-                    "countPerfect": self.countPerfect,
-                    "count_withDiagonal": self.count_withDiagonal,
-                    "list_countij": self.list_countij,
-                    "list_ADU_sum": self.list_ADU_sum,
-                }
+            output_dict = {
+                "count_found": self.count_found,
+                "countReject": self.countReject,
+                "count_1photon": self.count_1photon,
+                "count_2photon": self.count_2photon,
+                "count_morethan2": self.count_morethan2,
+                "countPerfect": self.countPerfect,
+                "count_withDiagonal": self.count_withDiagonal,
+                "list_countij": self.list_countij,
+                "list_ADU_sum": self.list_ADU_sum,
+            }
+
+            return output_dict, image_copy
 
         def triple_pixel(self):
-            kdict = kernelDict()["triple_pixel"]
 
+            # Initialising a copy of the image matrix to have elements removed once counted
+            image_copy = self.imMat.copy()
+
+            kdict = kernelDict()["triple_pixel"]
             kernels = kdict["kernels"]
             masks = kdict["masks"]
 
             for kernel, mask in zip(kernels, masks):
                 k_rows, k_cols = kernel.shape
-
                 # Convolve the image
                 for i in range(self.rowNum - k_rows + 1):
                     for j in range(self.colNum - k_cols + 1):
@@ -457,11 +572,15 @@ class PhotonCounting:
                             "b": nonZeroIndices[1],
                             "c": nonZeroIndices[2],
                         }
+
                         dict_vals = {}
                         totVal = 0
                         for key in dict_idx.keys():
                             dict_vals[key] = self.imMat[i+dict_idx[key][0], j+dict_idx[key][1]]
                             totVal += dict_vals[key]
+
+                            # Removing captured points from the copy
+                            image_copy[i + dict_idx[key][0], j + dict_idx[key][1]] = 0
 
                         self.list_ADU_sum.append(totVal)
 
@@ -478,10 +597,6 @@ class PhotonCounting:
                         elif check_diagonals(convolvedArea, kernel, mask):
                             self.count_withDiagonal += 1
 
-
-
-                        if self.return_matrix:
-                            self.outputMat[i:i + k_rows, j:j + k_cols] = self.imMat[i:i + k_rows, j:j + k_cols]
 
                         if totVal < self.sp_adu_thr:
                             keyOrderedList = sorted_keys_by_value(dict_vals)
@@ -509,22 +624,25 @@ class PhotonCounting:
                                 print(totVal)
                                 print(self.imMat[i:i + k_rows, j:j + k_cols])
 
-            if self.return_matrix:
-                return self.outputMat
-            else:
-                return {
-                    "count_found": self.count_found,
-                    "countReject": self.countReject,
-                    "count_1photon": self.count_1photon,
-                    "count_2photon": self.count_2photon,
-                    "count_morethan2": self.count_morethan2,
-                    "countPerfect": self.countPerfect,
-                    "count_withDiagonal": self.count_withDiagonal,
-                    "list_countij": self.list_countij,
-                    "list_ADU_sum": self.list_ADU_sum,
-                }
+            output_dict = {
+                "count_found": self.count_found,
+                "countReject": self.countReject,
+                "count_1photon": self.count_1photon,
+                "count_2photon": self.count_2photon,
+                "count_morethan2": self.count_morethan2,
+                "countPerfect": self.countPerfect,
+                "count_withDiagonal": self.count_withDiagonal,
+                "list_countij": self.list_countij,
+                "list_ADU_sum": self.list_ADU_sum,
+            }
+
+            return output_dict, image_copy
 
         def quadruple_pixel(self):
+
+            # Initialising a copy of the image matrix to have elements removed once counted
+            image_copy = self.imMat.copy()
+
             kdict = kernelDict()["quadruple_pixel"]
 
             kernels = kdict["kernels"]
@@ -560,6 +678,9 @@ class PhotonCounting:
                             valOfKey = self.imMat[dict_idx[key][0], dict_idx[key][1]]
                             dict_vals[key] = valOfKey
                             totVal += valOfKey
+
+                            # Removing captured points from the copy
+                            image_copy[dict_idx[key][0], dict_idx[key][1]] = 0
 
                         if totVal < self.no_p_adu_thr:
                             self.countReject += 1
@@ -600,21 +721,211 @@ class PhotonCounting:
                                 print(self.imMat[i:i + k_rows, j:j + k_cols])
                             self.count_morethan2 += 1
 
-            if self.return_matrix:
-                return self.outputMat
-            else:
-                return {
-                    "count_found": self.count_found,
-                    "countReject": self.countReject,
-                    "count_1photon": self.count_1photon,
-                    "count_2photon": self.count_2photon,
-                    "count_morethan2": self.count_morethan2,
-                    "countPerfect": self.countPerfect,
-                    "count_withDiagonal": self.count_withDiagonal,
-                    "list_countij": self.list_countij,
-                    "list_ADU_sum": self.list_ADU_sum,
-                }
+            output_dict = {
+                "count_found": self.count_found,
+                "countReject": self.countReject,
+                "count_1photon": self.count_1photon,
+                "count_2photon": self.count_2photon,
+                "count_morethan2": self.count_morethan2,
+                "countPerfect": self.countPerfect,
+                "count_withDiagonal": self.count_withDiagonal,
+                "list_countij": self.list_countij,
+                "list_ADU_sum": self.list_ADU_sum,
+            }
 
+            return output_dict, image_copy
+
+        def quintuple_pixel(self):
+
+            # Initialising a copy of the image matrix to have elements removed once counted
+            image_copy = self.imMat.copy()
+
+            kdict = kernelDict()["quintuple_pixel"]
+            kernels = kdict["kernels"]
+            masks = kdict["masks"]
+
+            for kernel, mask in zip(kernels, masks):
+                k_rows, k_cols = kernel.shape
+                # Convolve the image
+                for i in range(self.rowNum - k_rows + 1):
+                    for j in range(self.colNum - k_cols + 1):
+                        # Consider areas of the same size as the kernel:
+                        convolvedArea = self.image_binary[i:i + k_rows, j:j + k_cols]
+
+                        if not (np.array_equal(convolvedArea, kernel) or check_diagonals(convolvedArea, kernel, mask)):
+                            continue
+
+                        self.count_found += 1
+
+                        nonZeroIndices = np.argwhere(kernel != 0)
+
+                        dict_idx = {
+                            "a": nonZeroIndices[0],
+                            "b": nonZeroIndices[1],
+                            "c": nonZeroIndices[2],
+                            "d": nonZeroIndices[3],
+                            "e": nonZeroIndices[4],
+                        }
+
+                        dict_vals = {}
+                        totVal = 0
+                        for key in dict_idx.keys():
+                            dict_vals[key] = self.imMat[i+dict_idx[key][0], j+dict_idx[key][1]]
+                            totVal += dict_vals[key]
+
+                            # Removing captured points from the copy
+                            image_copy[i + dict_idx[key][0], j + dict_idx[key][1]] = 0
+
+                        self.list_ADU_sum.append(totVal)
+
+                        if totVal < self.no_p_adu_thr:
+                            if self.diagnostics:
+                                print(totVal)
+                            self.countReject += 1
+                            continue
+
+                        # Perfect Match
+                        if np.array_equal(convolvedArea, kernel):
+                            self.countPerfect += 1
+                        # Match with diagonal
+                        elif check_diagonals(convolvedArea, kernel, mask):
+                            self.count_withDiagonal += 1
+
+
+                        if totVal < self.sp_adu_thr:
+                            keyOrderedList = sorted_keys_by_value(dict_vals)
+                            max_key = keyOrderedList[0]
+
+                            self.list_countij.append([1, i + dict_idx[max_key][0], j + + dict_idx[max_key][0]])
+                            self.count_1photon += 1
+
+                        elif totVal < self.dp_adu_thr:
+                            keyOrderedList = sorted_keys_by_value(dict_vals)
+                            key_1 = keyOrderedList[0]
+                            key_2 = keyOrderedList[1]
+
+                            self.list_countij.append([1, i + dict_idx[key_1][0], j + dict_idx[key_1][1]])
+                            self.list_countij.append([1, i + dict_idx[key_2][0], j + dict_idx[key_2][1]])
+                            self.count_2photon += 2
+
+                            if self.diagnostics:
+                                print("dp_adu_thr")
+                                print(self.imMat[i:i + k_rows, j:j + k_cols])
+                        else:
+                            self.count_morethan2 += 1
+                            if self.diagnostics:
+                                print(f"Found a 3 photon hit near i={i},j={j}:")
+                                print(totVal)
+                                print(self.imMat[i:i + k_rows, j:j + k_cols])
+
+            output_dict = {
+                "count_found": self.count_found,
+                "countReject": self.countReject,
+                "count_1photon": self.count_1photon,
+                "count_2photon": self.count_2photon,
+                "count_morethan2": self.count_morethan2,
+                "countPerfect": self.countPerfect,
+                "count_withDiagonal": self.count_withDiagonal,
+                "list_countij": self.list_countij,
+                "list_ADU_sum": self.list_ADU_sum,
+            }
+
+            return output_dict, image_copy
+
+        def tp_line(self):
+
+            # Initialising a copy of the image matrix to have elements removed once counted
+            image_copy = self.imMat.copy()
+
+            kdict = kernelDict()["tp_line"]
+            kernels = kdict["kernels"]
+            masks = kdict["masks"]
+
+            for kernel, mask in zip(kernels, masks):
+                k_rows, k_cols = kernel.shape
+                # Convolve the image
+                for i in range(self.rowNum - k_rows + 1):
+                    for j in range(self.colNum - k_cols + 1):
+                        # Consider areas of the same size as the kernel:
+                        convolvedArea = self.image_binary[i:i + k_rows, j:j + k_cols]
+
+                        if not (np.array_equal(convolvedArea, kernel) or check_diagonals(convolvedArea, kernel, mask)):
+                            continue
+
+                        self.count_found += 1
+
+                        nonZeroIndices = np.argwhere(kernel != 0)
+
+                        dict_idx = {
+                            "a": nonZeroIndices[0],
+                            "b": nonZeroIndices[1],
+                            "c": nonZeroIndices[2],
+                        }
+
+                        dict_vals = {}
+                        totVal = 0
+                        for key in dict_idx.keys():
+                            dict_vals[key] = self.imMat[i+dict_idx[key][0], j+dict_idx[key][1]]
+                            totVal += dict_vals[key]
+
+                            # Removing captured points from the copy
+                            image_copy[i + dict_idx[key][0], j + dict_idx[key][1]] = 0
+
+                        self.list_ADU_sum.append(totVal)
+
+                        if totVal < self.no_p_adu_thr:
+                            if self.diagnostics:
+                                print(totVal)
+                            self.countReject += 1
+                            continue
+
+                        # Perfect Match
+                        if np.array_equal(convolvedArea, kernel):
+                            self.countPerfect += 1
+                        # Match with diagonal
+                        elif check_diagonals(convolvedArea, kernel, mask):
+                            self.count_withDiagonal += 1
+
+
+                        if totVal < self.sp_adu_thr:
+                            keyOrderedList = sorted_keys_by_value(dict_vals)
+                            max_key = keyOrderedList[0]
+
+                            self.list_countij.append([1, i + dict_idx[max_key][0], j + + dict_idx[max_key][0]])
+                            self.count_1photon += 1
+
+                        elif totVal < self.dp_adu_thr:
+                            keyOrderedList = sorted_keys_by_value(dict_vals)
+                            key_1 = keyOrderedList[0]
+                            key_2 = keyOrderedList[1]
+
+                            self.list_countij.append([1, i + dict_idx[key_1][0], j + dict_idx[key_1][1]])
+                            self.list_countij.append([1, i + dict_idx[key_2][0], j + dict_idx[key_2][1]])
+                            self.count_2photon += 2
+
+                            if self.diagnostics:
+                                print("dp_adu_thr")
+                                print(self.imMat[i:i + k_rows, j:j + k_cols])
+                        else:
+                            self.count_morethan2 += 1
+                            if self.diagnostics:
+                                print(f"Found a 3 photon hit near i={i},j={j}:")
+                                print(totVal)
+                                print(self.imMat[i:i + k_rows, j:j + k_cols])
+
+            output_dict = {
+                "count_found": self.count_found,
+                "countReject": self.countReject,
+                "count_1photon": self.count_1photon,
+                "count_2photon": self.count_2photon,
+                "count_morethan2": self.count_morethan2,
+                "countPerfect": self.countPerfect,
+                "count_withDiagonal": self.count_withDiagonal,
+                "list_countij": self.list_countij,
+                "list_ADU_sum": self.list_ADU_sum,
+            }
+
+            return output_dict, image_copy
 
 
 if __name__ == "__main__":
@@ -629,17 +940,70 @@ if __name__ == "__main__":
         pc.display_kernel_type("triple_pixel", report=True,bins=300,image_matrix_replace=reducedMat)
         pc.display_kernel_type("quadruple_pixel", report=True,bins=300,image_matrix_replace=reducedMat)
 
-    test_TypePhoton()
+    # test_TypePhoton()
 
-    def unitTest():
+    def unitTest(printMatBetween=True,matToTest=None):
         pc = PhotonCounting(indexOfInterest=8, no_photon_adu_thr=80, howManySigma_thr=2)
-        ut_mat = TestImages().diagonals()
-        for ktype in ["single_pixel","double_pixel","triple_pixel","quadruple_pixel"]:
-            pc.check_kernel_type(ktype, report=True, image_matrix_replace=ut_mat)
 
-        plt.imshow(ut_mat)
+        if matToTest is None:
+            ut_mat = TestImages().diagonals()
+        else:
+            ut_mat = matToTest
+
+        # renaming this so that we start using the repeated matrix
+        imMat_pRemoved = ut_mat.copy()
+
+        if printMatBetween:
+            plt.imshow(ut_mat)
+            plt.show()
+
+        for ktype in ["single_pixel","double_pixel","triple_pixel","quadruple_pixel"]:
+            outputDict, imMat_pRemoved = pc.check_kernel_type(ktype, report=True, image_matrix_replace=imMat_pRemoved)
+
+            if printMatBetween:
+                plt.imshow(imMat_pRemoved)
+                plt.show()
+
+        if not printMatBetween:
+            plt.imshow(ut_mat)
+            plt.show()
+
+    # unitTest(True)
+
+    def compareFaveLittleSpot():
+        pc = PhotonCounting(indexOfInterest=8, no_photon_adu_thr=80, howManySigma_thr=2)
+        sigma = pc.sigmaPedestal
+        mean = pc.meanPedestal
+
+        thr_sigma_1 = 2
+        thr_sigma_2 = 3
+
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1), plt.imshow(TestImages().image8_cluster(thr_after_mean_removed=thr_sigma_1 * sigma, mean=mean), cmap='hot'), plt.title(
+            f"Image Thresholded above {thr_sigma_1} sigma")
+        plt.subplot(1, 2, 2), plt.imshow(TestImages().image8_cluster(thr_after_mean_removed=thr_sigma_2 * sigma, mean=mean), cmap='hot'), plt.title(
+            f"Image 8 Thresholded above {thr_sigma_2} sigma")
         plt.show()
 
-    # unitTest()
+    # compareFaveLittleSpot()
+
+    def unitTest_imageOutputs(openIms=False):
+        pc = PhotonCounting(indexOfInterest=8, no_photon_adu_thr=80, howManySigma_thr=2,)
+        ut_filepath = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\unit_test"
+
+        testMat = TestImages().diagonals()
+        pc.kernelType_reducedMat(folder_filepath=ut_filepath,filename="unit_test_1",matrix_to_test=testMat)
+
+        if openIms:
+            for file_name in os.listdir(ut_filepath):
+                if file_name.endswith(".npy"):
+                    file_path = os.path.join(ut_filepath, file_name)
+                    data = np.load(file_path)
+                    plt.imshow(data)
+                    plt.title(file_name)
+                    plt.show()
+
+
+    unitTest_imageOutputs(True)
 
     pass

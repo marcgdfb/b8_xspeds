@@ -1,6 +1,7 @@
 from calibrateGeometry import *
 from spc_engine_v3 import *
 from collections import Counter
+import time
 
 
 # TODO: Make it clear in documentation that the mean is subtracted from the result. Do this in readme?
@@ -10,6 +11,8 @@ from collections import Counter
 # TODO: think about what's going to be optimising :
 # Initial image threshold, no photon some adu thr, 1 photon adu sum, 2 photon adu sum
 # should the sum be different for each number
+
+# TODO: consider giving i,j not to check and searching simultaneously for like sized shapes
 
 
 class Spectrum:
@@ -51,7 +54,23 @@ class Spectrum:
 
     def multiPixelSpectrum(self, band_width=2, methodList=None,
                            spectrumTitle=None,
-                           plotSpectrum=False, logarithmic=False, intensity_arb_unit=False, plotEachSubSpectrum=False):
+                           plotSpectrum=False, logarithmic=False,
+                           intensity_arb_unit=False, plotEachSubSpectrum=False,
+                           intermediary_matrices_arg_dict=None
+                           ):
+        """
+        :param band_width:
+        :param methodList:
+        :param spectrumTitle:
+        :param plotSpectrum:
+        :param logarithmic:
+        :param intensity_arb_unit:
+        :param plotEachSubSpectrum:
+        :param intermediary_matrices_arg_dict: A dictionary with folder path, filename
+        :return:
+        """
+
+        startTime = time.time()
 
         if spectrumTitle is None:
             howManySigmaTitle = f'\nConsidering values {self.how_many_sigma} above the mean'
@@ -59,7 +78,7 @@ class Spectrum:
             spectrumTitle = f"Photon Energy Spectrum with Multi Photon Hits Version 2" + howManySigmaTitle + thresholds_title
 
         if methodList is None:
-            methodList = ["single_pixel", "double_pixel", "triple_pixel", "quadruple_pixel", ]
+            methodList = list(kdic.keys())
 
         spc_engine = PhotonCounting(indexOfInterest=self.indexOfInterest,
                                     no_photon_adu_thr=self.noP_thresh, sp_adu_thr=self.sp_thresh,
@@ -70,12 +89,74 @@ class Spectrum:
                              camera_pitch=self.cam_pitch, camera_roll=self.cam_roll,
                              r_camera_spherical=self.r_cam_spherical)
         energyDict = {}
+        output_dictionaries = {}
 
-        for method in methodList:
-            output_dictionary, imMat_pRemoved = spc_engine.check_kernel_type(kernel_type=method, report=True)
+        imMat_pRemoved = spc_engine.imMat.copy()
+
+        if intermediary_matrices_arg_dict is not None:
+            folderpath = intermediary_matrices_arg_dict["folderpath"]
+            filename = intermediary_matrices_arg_dict["filename"]
+
+            np.save(f"{folderpath}/{filename}_raw.npy", imMat_pRemoved)
+
+        for number,method in enumerate(methodList):
+            output_dictionary, imMat_pRemoved = spc_engine.check_kernel_type(kernel_type=method, report=True,image_matrix_replace=imMat_pRemoved)
             listCountij = output_dictionary["list_countij"]
             energyList = self.lists_energy(listCountij, braggEngine_init=bragg_engine)
             energyDict[method] = energyList
+
+            output_dictionaries[method] = output_dictionary
+
+            if intermediary_matrices_arg_dict is not None:
+                folderpath = intermediary_matrices_arg_dict["folderpath"]
+                filename = intermediary_matrices_arg_dict["filename"]
+                np.save(f"{folderpath}/{filename}_{number}.npy", imMat_pRemoved)
+
+        endtime = time.time()
+        function_time = endtime - startTime
+        minutes, seconds = divmod(function_time, 60)
+
+        print(f"multiPixelSpectrum function runtime: {int(minutes)} minutes and {seconds:.2f} seconds")
+
+        if intermediary_matrices_arg_dict is not None:
+            folderpath = intermediary_matrices_arg_dict["folderpath"]
+            filename = intermediary_matrices_arg_dict["filename"]
+
+            np.save(f"{folderpath}/{filename}_final.npy", imMat_pRemoved)
+
+            def log_params():
+                txt_filepath = f"{folderpath}/{filename}_notes.txt"
+                atf = Append_to_file(txt_filepath)
+                app = atf.append
+                app("-" * 30)
+                app(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                app(f"multiPixelSpectrum function runtime: {int(minutes)} minutes and {seconds:.2f} seconds")
+                app("-" * 30)
+                app("Photon Countining Initialised Parameters:")
+                app(f"index of interest = {self.indexOfInterest}")
+                app(f"no_p_adu_thr = {self.noP_thresh}")
+                app(f"sp_adu_thr = {self.sp_thresh}")
+                app(f"dp_adu_thr = {self.dp_thresh}")
+                app(f"howManySigma = {self.how_many_sigma}")
+
+                app(f"Elements were removed with kernels in the following order:")
+                app(f"{methodList}")
+
+                for kernel in methodList:
+                    outputDict = output_dictionaries[kernel]
+
+                    app("-" * 30)
+                    app(f"{kernel}:")
+                    app("-" * 30)
+                    app(f"Number of found elements: {outputDict['count_found']}")
+                    app(f"Number of found elements rejected: {outputDict['countReject']}")
+                    app(f"Number of 1 photon elements: {outputDict['count_1photon']}")
+                    app(f"Number of 2 photon elements: {outputDict['count_2photon']}")
+                    app(f"Number of elements with more than 2 photons: {outputDict["count_morethan2"]}")
+
+            log_params()
+
+
 
         if plotEachSubSpectrum:
             for method in methodList:
@@ -86,8 +167,7 @@ class Spectrum:
 
                 specTitleMethod = main_title + '\n' + howManySigmaTitle + '\n' + thresholds_title
 
-                self.plotSpectrum(energyList, band_width,
-                                  specTitleMethod,
+                self.plotSpectrum(energyList, band_width,specTitleMethod,
                                   intensity_arb_unit, logarithmic)
 
         if plotSpectrum:
@@ -191,7 +271,11 @@ if __name__ == "__main__":
                         )
     spectrum.multiPixelSpectrum(band_width=1, plotSpectrum=True, logarithmic=False, plotEachSubSpectrum=True,
                                 intensity_arb_unit=True,
-                                spectrumTitle=None)
+                                spectrumTitle=None,
+                                intermediary_matrices_arg_dict={
+                                    "folderpath": r"C:/Users/marcg/OneDrive/Documents/Oxford Physics/Year 3/B8/b8_xspeds/data_logs\image_matrices\image_8",
+                                    "filename": "im8_test1"
+                                })
 
     # spectrum = Spectrum(imData[8], 100, crysPitch, CrysRoll, CamPitch, CamRoll, rcamSpherical)
     # spectrum.singlePixelPhotonSpectrumOLD(band_width=1, plotSpectrum=True, intensity_arbUnits=True, logarithmic=False)

@@ -6,8 +6,7 @@ class TestImages:
     def __init__(self):
         pass
 
-    @staticmethod
-    def diagonals():
+    def diagonals(self):
 
         matCombined = np.zeros((20,20))
 
@@ -29,25 +28,54 @@ class TestImages:
                                 [0, 70, 60, 0],
                                 [0, 0, 0, 0]])
 
+        diag_5pixel = np.array([[0, 0, 0, 0, 150],
+                                [0, 50, 50, 0, 0],
+                                [0, 60, 50, 40, 0],
+                                [0, 0, 0, 0, 0]])
+
+        long_l = np.array([[0, 0, 0, 0, 0],
+                            [0, 50, 0, 0, 0],
+                            [0, 60, 50, 40, 0],
+                            [0, 0, 0, 0, 0]])
+
+        t_junc = np.array([[0, 0, 0, 0, 0],
+                            [0, 0, 50, 0, 0],
+                            [0, 60, 50, 40, 0],
+                            [0, 0, 0, 0, 0]])
+
+        zigzag = np.array([[0, 0, 0, 0, 0],
+                            [0, 0, 50, 40, 0],
+                            [0, 60, 50, 0, 0],
+                            [0, 0, 0, 0, 0]])
+
         matCombined[1:4, 1:5] = diag_2pixel
         matCombined[5:9,1:5] = diag_3pixel
         matCombined[10:13,1:4] = diag_1pixel
         matCombined[14:18,1:5] = diag_4pixel
-        matCombined[2,5:8] = 70
+        matCombined[2,5:8] = 70   # Create the line
+
+        matCombined[5:9,6:11] = diag_5pixel
+        matCombined[10:14,6:11] = long_l
+        matCombined[15:19,6:11] = t_junc
+
+        matCombined[1:15,11:19] = self.image8_cluster(thr_after_mean_removed=20, mean=60)
+        matCombined[16:20,12:17] = zigzag
+
 
         return matCombined
 
 
     @staticmethod
-    def image8_cluster(thr=0):
+    def image8_cluster(thr_after_mean_removed=0, mean=0):
         topleft = (636,1419)
         bottomright = (650,1427)
 
         imMat8 = loadData()[8]
 
-        imMat8[imMat8 < thr] = 0
+        mat_minusMean = imMat8.astype(np.int16) - mean
+        mat_minusMean[mat_minusMean < thr_after_mean_removed] = 0
 
-        return imMat8[topleft[0]:bottomright[0],topleft[1]:bottomright[1]]
+        return mat_minusMean[topleft[0]:bottomright[0],topleft[1]:bottomright[1]]
 
 
     @staticmethod
@@ -61,13 +89,25 @@ class TestImages:
 
         return imMat8[topleft[0]:bottomright[0],topleft[1]:bottomright[1]]
 
+    @staticmethod
+    def image_8_post_kernels():
+        im8_postk = np.load(r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\image_8\im8_test1_final.npy")
+        return im8_postk
+
 
 if __name__ == "__main__":
 
     # plt.imshow(TestImages().diagonals())
     # plt.show()
 
+    plt.imshow(TestImages.image_8_post_kernels())
+    plt.show()
+
     # plt.imshow(TestImages().image8_cluster(80))
     # plt.show()
+    #
+    # plt.imshow(TestImages().image_8_emission_lines(80))
+    # plt.show()
+
 
     pass
