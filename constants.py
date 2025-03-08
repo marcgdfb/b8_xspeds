@@ -2,15 +2,15 @@ import numpy as np
 
 d_beryl = (15.96 / 2) * (10 ** -10)
 q_e = 1.602176634 * (10 ** -19)
-E_min_eV = 1100  # gives an angle of 0.360893817056611
-E_max_eV = 1600  # gives an angle of 0.24521360602485284
+E_min_eV = 1100   # 0.78414658211633
+E_max_eV = 1600   # 0.5069659949953977
 h_planck = 6.62607015 * (10 ** -34)
 h_bar = h_planck / (2 * np.pi)
 c = 299792458
 
 # For this experiment Germanium (Z=32) plasmas were investigated
-E_Lalpha_eV = 1188  # gives an angle of 0.3330789144174696  # Right Hand Side
-E_Lbeta_eV = 1218.5  # gives an angle of 0.3244318771351659  # Left Hand Side
+E_Lalpha_eV = 1188  # gives an angle of 0.7127390872863559  # Right Hand Side
+E_Lbeta_eV = 1218.5  # gives an angle of 0.6913018700701734  # Left Hand Side
 
 # Similarly a Princeton Instruments PI-MTE 2048B CCD camera
 # was used. The Manual can be accessed at https://usermanual.wiki/Princeton/4411-0097.1370993303.pdf

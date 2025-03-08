@@ -9,9 +9,6 @@ import cv2
 matplotlib.use('TkAgg')
 
 
-list_darkData = [0, 3, 5, 9, 10, 12, 13, 15, 18]
-
-
 def loadData():
     # The following code was provided by Sam Vinko, University of Oxford:
 
@@ -318,33 +315,30 @@ class Convolve:
                          padding=self.paddingTuple, stride=1)
         return pool(torch.tensor(self.imageMatrix, dtype=torch.float32).unsqueeze(0).unsqueeze(0)).reshape(2048, 2048)
 
+def imVeryClear(matrixOfInterest,thr=100,ktuple=(11,3)):
+
+    mat_thr = np.where(matrixOfInterest > thr, matrixOfInterest, 0)
+    return np.asarray(Convolve(mat_thr, ktuple).avgPool())
+
 
 imData = loadData()
 
-num = 8
+list_darkNoPeaks = [3,5,9,12,13,15,18]
+list_dark_smallPeaks = [0,10]
+list_darkData = [0, 3, 5, 9, 10, 12, 13, 15, 18]
+
+list_data = []
+for idx_data in range(len(imData)):
+    if idx_data not in list_darkData:
+        list_data.append(idx_data)
+
+print(list_data)
+
 array8Test = imData[8]
 high_intensity_points = Clean.matrixAboveThreshold(array8Test, 100)
-high_intensity_points_binary = Clean.createBinaryMatrix(array8Test, 107)
-doubledThresholdedPoints = Clean.createNormalisedLogMatrix(
-    np.where((array8Test > 100) & (array8Test < 200), array8Test, 0))
-
-doubledThresholdedPointsBinary = Clean.createBinaryMatrix(doubledThresholdedPoints, 0)
-# plt.imshow(doubledThresholdedPointsBinary,cmap="hot"),plt.title(f"Thresholded Image 8 (200>I_pixel>100) Binary"),plt.show()
-
-# Try with removed top
-# doubledThresholdedPoints = Clean.removeTopData(doubledThresholdedPoints,rowHigher=400)
-
-ktuple = (11, 3)
-lbThreshold = 10
-ubThreshold = 25
-
-imTensor = np.asarray(Convolve(high_intensity_points, ktuple).avgPool())
-imTensorThresholded = np.where((imTensor > 5) & (imTensor < 30), imTensor, 0)
-
-imVeryClear = np.asarray(Convolve(high_intensity_points, (21, 5)).avgPool())
-
+im_very_clear = np.asarray(Convolve(high_intensity_points, (21, 5)).avgPool())
 imTest = high_intensity_points
-imClear = np.asarray(Convolve(imTest, ktuple).avgPool())
+
 
 imTestBinary = Clean.createBinaryMatrix(imTest, 0)
 
@@ -388,7 +382,7 @@ if __name__ == '__main__':
         plt.title(title)
         plt.show()
 
-    plotRawDoubleThresholded(8,90,3000)
+    # plotRawDoubleThresholded(8,75,3000)
 
 
 
@@ -449,8 +443,8 @@ if __name__ == '__main__':
     # plt.imshow(doubledThresholdedPoints, cmap="hot"), plt.title(f"Thresholded Image 8 (200>I_pixel>100"), plt.show()
     # plt.imshow(imTensorThresholded),plt.title(f"Pooled Image {ktuple} greater than {lbThreshold} less than {ubThreshold}"),plt.show()
 
-    # plt.imshow(Clean.removeTopData(imVeryClear,200),cmap='hot')
-    # plt.show()
+    plt.imshow(im_very_clear, cmap='hot')
+    plt.show()
 
 
     pass

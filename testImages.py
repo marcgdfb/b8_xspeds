@@ -1,3 +1,5 @@
+import numpy as np
+
 from imagePreProcessing import *
 
 # TODO: Create unit test of shapes
@@ -64,6 +66,18 @@ class TestImages:
 
         return matCombined
 
+    def islands(self):
+        matCombined = np.zeros((20,9))
+        matCombined[0:14,0:8] = self.image8_cluster(thr_after_mean_removed=2*9.5, mean=58.598)
+        # matCombined[15:20,0:5] = np.array([[0,0,100,0,0],
+        #                                    [0,0,100,50,30],
+        #                                    [0,50,100,60,0],
+        #                                    [0,100,100,80,70],
+        #                                    [0,0,0,0,0],]
+        #                                   )
+
+
+        return matCombined
 
     @staticmethod
     def image8_cluster(thr_after_mean_removed=0, mean=0):
@@ -91,17 +105,20 @@ class TestImages:
 
     @staticmethod
     def image_8_post_kernels():
-        im8_postk = np.load(r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\image_8\im8_test1_final.npy")
+        im8_postk = np.load(r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\image_8\test3_final.npy")
         return im8_postk
 
 
 if __name__ == "__main__":
 
-    # plt.imshow(TestImages().diagonals())
+    # plt.imshow(TestImages().islands())
     # plt.show()
 
     plt.imshow(TestImages.image_8_post_kernels())
     plt.show()
+
+    # plt.imshow(np.load(r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\image_8\test2_3_3.npy"))
+    # plt.show()
 
     # plt.imshow(TestImages().image8_cluster(80))
     # plt.show()

@@ -148,3 +148,44 @@ plt.subplot(2,2,3), plt.imshow(imTensor31Avg33, cmap='hot'), plt.title('3')
 plt.subplot(2,2,4), plt.imshow(imTensor31Avg53, cmap='hot'), plt.title('4')
 
 plt.show()
+
+def solidAngleNormalisation(energy_eV, n_crystal, n_camera, r_camera):
+    """
+    For a given value of energy we have an associated radius and angle and hence
+    can compute the fractional normalisation. The true count is the count incident
+    on the detector / this fractional normalisation
+
+    This factor is given by (2 * phi * sin(theta)) / (4 pi)
+    """
+
+
+    # Given a value of radius r, due to the size of the CCD each radius has a different range of
+    # phi that it is allowed 2 phi sin theta / 4 pi
+
+
+    # rotation matrix from bragg crystal to our coordinate system
+    rotMatrix_cry = inverseRotation_matrix(n_crystal)
+
+    # The source is considered to be at the origin
+    theta = bragg_E_to_theta(energy_eV)
+
+    # The allowed directional vectors in spherical coordinate are then (1,theta, [0,2 pi])
+
+    for phi in np.arange(np.pi / 2, 3 * np.pi / 2, 0.0001):
+
+        v_ray_prime = spherical_to_cartesian(np.array([1, np.pi / 2 + theta, phi]))
+
+        v_ray = np.dot(rotMatrix_cry, v_ray_prime)
+
+        v_ray_spherical = cartesian_to_spherical(v_ray)
+
+        # TODO: consider whether this geometry is entirely correct
+
+        print(v_ray_spherical)
+
+    phiRange = 1
+    valTheta = 1
+
+    fractional_normalisation = (2*phiRange * np.sin(valTheta)) / (4 * np.pi)
+
+    return fractional_normalisation

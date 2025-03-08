@@ -1,7 +1,4 @@
-import matplotlib.pyplot as plt
-import seaborn as sns
-from mpl_toolkits.mplot3d import Axes3D
-
+import pandas as pd
 from constants import *
 
 def bragg_E_to_theta(E_eV,d=d_beryl):
@@ -26,14 +23,6 @@ def bragg_theta_to_E(theta_rad, d=d_beryl):
 
     return (h_planck*c)/(2*d*np.sin(theta_rad)*q_e)
 
-
-def bragg_vectorised(E_eV,n_crystal,d=d_beryl):
-
-    # We demand that n dot v (normalised) give sin t where t is given by the bragg condition
-
-    sint = (h_planck*c)/(2*d*E_eV*q_e)
-
-    n_crys_normalised = n_crystal / np.linalg.norm(n_crystal)
 
 
 
@@ -187,50 +176,6 @@ def xyPlane_to_ray(x_plane,y_plane,camera_ptich,camera_roll,r_camera_cart):
 
 
 
-
-def solidAngleNormalisation(energy_eV, n_crystal, n_camera, r_camera):
-    """
-    For a given value of energy we have an associated radius and angle and hence
-    can compute the fractional normalisation. The true count is the count incident
-    on the detector / this fractional normalisation
-
-    This factor is given by (2 * phi * sin(theta)) / (4 pi)
-    """
-
-
-    # Given a value of radius r, due to the size of the CCD each radius has a different range of
-    # phi that it is allowed 2 phi sin theta / 4 pi
-
-
-    # rotation matrix from bragg crystal to our coordinate system
-    rotMatrix_cry = inverseRotation_matrix(n_crystal)
-
-    # The source is considered to be at the origin
-    theta = bragg_E_to_theta(energy_eV)
-
-    # The allowed directional vectors in spherical coordinate are then (1,theta, [0,2 pi])
-
-    for phi in np.arange(np.pi / 2, 3 * np.pi / 2, 0.0001):
-
-        v_ray_prime = spherical_to_cartesian(np.array([1, np.pi / 2 + theta, phi]))
-
-        v_ray = np.dot(rotMatrix_cry, v_ray_prime)
-
-        v_ray_spherical = cartesian_to_spherical(v_ray)
-
-        # TODO: consider whether this geometry is entirely correct
-
-        print(v_ray_spherical)
-
-    phiRange = 1
-    valTheta = 1
-
-    fractional_normalisation = (2*phiRange * np.sin(valTheta)) / (4 * np.pi)
-
-    return fractional_normalisation
-
-# solidAngleNormalisation(1200,np.array([0.0001,0,1]),None,None)
-
 def energy_to_pixel(energy_eV,n_crystal,n_camera, r_camera_spherical,
                     xpixels=2048, ypixels=2048, pixelWidth=pixel_width,
                     ):
@@ -276,7 +221,7 @@ def EulerfromNVector(n_vector):
 def rotMatrixUsingEuler(pitch_rad,roll_rad):
 
     # Here using the euler angles to rotate from 0 0 1 to the normal vector
-    # The way that I have chose by x,y,z implies a rotation around the y axis first then around the x axis
+    # The way that I have chose by x,y,z implies a rotation around the y-axis first then around the x-axis
 
     rotMatAroundY = np.array([
         [np.cos(pitch_rad),  0, np.sin(pitch_rad)],
@@ -315,6 +260,24 @@ def InverseRotMatrixUsingEuler(pitch_rad,roll_rad):
 # print(nVectorFromEuler(-0.19,0))
 # print(np.dot(rotMatrixUsingEuler(-0.19,0),np.array([0,0,1])))
 
+def random_direction(theta_max,theta_min, phi_max,phi_min):
+
+    # For solid angles d omega = sin(theta) d theta d phi
+    #                          = -d(cos(theta)) d phi
+    # This means we want to uniformly sample from cos theta for theta
+    # sampling and uniformaly for phi sampling
+
+    cos_max, cos_min = np.cos(theta_min), np.cos(theta_max)
+
+    # sample random cos theta
+    rdm_cos = np.random.uniform(cos_min,cos_max)
+    rdm_theta = np.arccos(rdm_cos)
+    # sample phi
+    rdm_phi = np.random.uniform(phi_min,phi_max)
+
+    return rdm_theta,rdm_phi
+
+
 
 minimise_count = 0
 def callbackminimise(params):
@@ -325,13 +288,6 @@ def callbackminimise(params):
     print(params)
 
 
-class Visualise:
-
-    @staticmethod
-    def spectrum(df,energyCol="Energy",countIntensityCol="Count"):
-
-        sns.lineplot(data=df,x=energyCol, y=countIntensityCol)
-        plt.show()
 
 def append_to_file(file_path, text):
     with open(file_path, "a", encoding="utf-8") as file:

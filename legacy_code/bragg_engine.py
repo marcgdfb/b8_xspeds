@@ -2,6 +2,15 @@ import pandas as pd
 
 from tools import *
 
+class Visualise:
+
+    @staticmethod
+    def spectrum(df,energyCol="Energy",countIntensityCol="Count"):
+
+        sns.lineplot(data=df,x=energyCol, y=countIntensityCol)
+        plt.show()
+
+
 class Bragg:
     def __init__(self,imageMatrix,pixelWidth=pixel_width):
         """

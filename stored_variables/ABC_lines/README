@@ -1,0 +1,3 @@
+The values in this will be an array of 6 values of the form
+np.array([ALeft, BLeft, cLeft],
+                     [ARight, BRight, cRight])
