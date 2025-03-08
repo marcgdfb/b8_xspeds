@@ -629,6 +629,264 @@ class PhotonCounting:
         the ADU value of that regime would look like"""
 
 
+class KernelDict:
+    def __init__(self):
+        pass
+        #
+
+    @staticmethod
+    def single_pixel():
+        sp_isolated_kernel = np.array([[0, 0, 0],
+                                       [0, 1, 0],
+                                       [0, 0, 0]])
+        sp_check_mask = np.array([[0, 1, 0],
+                                  [1, 0, 1],
+                                  [0, 1, 0]])
+
+        return {
+            "kernels": [sp_isolated_kernel],
+            "masks": [sp_check_mask],
+        }
+
+    #
+    @staticmethod
+    def double_pixel_3row_4col():
+        return {
+            "kernels": [np.array([[0, 0, 0, 0],
+                                  [0, 1, 1, 0],
+                                  [0, 0, 0, 0]]), ],
+            "masks": [np.array([[0, 1, 1, 0],
+                                [1, 0, 0, 1],
+                                [0, 1, 1, 0]]), ],
+        }
+
+    #
+    @staticmethod
+    def double_pixel_4row_3col():
+        return {
+            "kernels": [np.array([[0, 0, 0],
+                                  [0, 1, 0],
+                                  [0, 1, 0],
+                                  [0, 0, 0]]), ],
+            "masks": [np.array([[0, 1, 0],
+                                [1, 0, 1],
+                                [1, 0, 1],
+                                [0, 1, 0]]), ],
+        }
+    #
+    @staticmethod
+    def triple_pixel_4row_4col():
+        tp_kernel_1 = np.array([[0, 0, 0, 0],
+                                [0, 1, 1, 0],
+                                [0, 0, 1, 0],
+                                [0, 0, 0, 0]])
+        tp_kernel_2 = np.rot90(tp_kernel_1)
+        tp_kernel_3 = np.rot90(tp_kernel_2)
+        tp_kernel_4 = np.rot90(tp_kernel_3)
+
+        tp_mask_1 = np.array([[0, 1, 1, 0],
+                              [1, 0, 0, 1],
+                              [0, 1, 0, 1],
+                              [0, 0, 1, 0]])
+        tp_mask_2 = np.rot90(tp_mask_1)
+        tp_mask_3 = np.rot90(tp_mask_2)
+        tp_mask_4 = np.rot90(tp_mask_3)
+
+        return {
+            "kernels": [tp_kernel_1, tp_kernel_2, tp_kernel_3, tp_kernel_4],
+            "masks": [tp_mask_1, tp_mask_2, tp_mask_3, tp_mask_4],
+        }
+    #
+    @staticmethod
+    def quadruple_pixel_4row_4col():
+        qp_kernel_1 = np.array([[0, 0, 0, 0],
+                                [0, 1, 1, 0],
+                                [0, 1, 1, 0],
+                                [0, 0, 0, 0]])
+        qp_mask_1 = np.array([[0, 1, 1, 0],
+                              [1, 0, 0, 1],
+                              [1, 0, 0, 1],
+                              [0, 1, 1, 0]])
+
+        return {
+            "kernels": [qp_kernel_1],
+            "masks": [qp_mask_1],
+        }
+
+    #
+    @staticmethod
+    def tp_line_3row_5col():
+        tp_line_kernel_1 = np.array([[0, 0, 0, 0, 0],
+                                     [0, 1, 1, 1, 0],
+                                     [0, 0, 0, 0, 0]])
+        tp_line_mask_1 = tp_line_mask_1 = np.array([[0, 1, 1, 1, 0],
+                                                    [1, 0, 0, 0, 1],
+                                                    [0, 1, 1, 1, 0]])
+
+        return {
+            "kernels": [tp_line_kernel_1, ],
+            "masks": [tp_line_mask_1, ],
+        }
+    #
+    @staticmethod
+    def tp_line_5row_3col():
+        tp_line_kernel_1 = np.rot90(np.array([[0, 0, 0, 0, 0],
+                                              [0, 1, 1, 1, 0],
+                                              [0, 0, 0, 0, 0]]))
+        tp_line_mask_1 = np.rot90(np.array([[0, 1, 1, 1, 0],
+                                            [1, 0, 0, 0, 1],
+                                            [0, 1, 1, 1, 0]]))
+
+        return {
+            "kernels": [tp_line_kernel_1, ],
+            "masks": [tp_line_mask_1, ],
+        }
+
+    @staticmethod
+    def generalised_row_col(kernel_1, mask_1):
+        # Rotate 180 degrees to get the same shape, also flip, also flip and rotate 180
+
+        kernel_2 = np.rot90(np.rot90(kernel_1))
+        mask_2 = np.rot90(np.rot90(mask_1))
+
+        kernel_3 = np.flipud(kernel_1)
+        mask_3 = np.flipud(mask_1)
+
+        kernel_4 = np.flipud(kernel_2)
+        mask_4 = np.flipud(mask_2)
+
+        return {
+            "kernels": [kernel_1, kernel_2, kernel_3, kernel_4],
+            "masks": [mask_1, mask_2, mask_3, mask_4],
+        }
+
+    #
+    def quintuple_pixel(self):
+        quint_kernel_1 = np.array([[0, 0, 0, 0, 0],
+                                   [0, 1, 1, 1, 0],
+                                   [0, 0, 1, 1, 0],
+                                   [0, 0, 0, 0, 0]])
+        quint_mask_1 = np.array([[0, 1, 1, 1, 0],
+                                 [1, 0, 0, 0, 1],
+                                 [0, 1, 0, 0, 1],
+                                 [0, 0, 1, 1, 0]])
+
+        dict_4row5col = self.generalised_row_col(quint_kernel_1, quint_mask_1)
+
+        dict_5row4col = self.generalised_row_col(np.rot90(quint_kernel_1), np.rot90(quint_mask_1))
+
+        return dict_4row5col, dict_5row4col
+
+    #
+    def longL_shape(self):
+        ll_kernel_1 = np.array([[0, 0, 0, 0, 0],
+                                [0, 1, 1, 1, 0],
+                                [0, 0, 0, 1, 0],
+                                [0, 0, 0, 0, 0]])
+        ll_mask_1 = np.array([[0, 1, 1, 1, 0],
+                              [1, 0, 0, 0, 1],
+                              [0, 1, 1, 0, 1],
+                              [0, 0, 0, 1, 0]])
+        dict_4row5col = self.generalised_row_col(ll_kernel_1, ll_mask_1)
+
+        dict_5row4col = self.generalised_row_col(np.rot90(ll_kernel_1), np.rot90(ll_mask_1))
+
+        return dict_4row5col, dict_5row4col
+
+    #
+    def t_shape(self):
+        t_kernel_1 = np.array([[0, 0, 0, 0, 0],
+                               [0, 1, 1, 1, 0],
+                               [0, 0, 1, 0, 0],
+                               [0, 0, 0, 0, 0]])
+
+        t_mask_1 = np.array([[0, 1, 1, 1, 0],
+                             [1, 0, 0, 0, 1],
+                             [0, 1, 0, 1, 0],
+                             [0, 0, 1, 0, 0]])
+        dict_4row5col = self.generalised_row_col(t_kernel_1, t_mask_1)
+
+        dict_5row4col = self.generalised_row_col(np.rot90(t_kernel_1), np.rot90(t_mask_1))
+
+        return dict_4row5col, dict_5row4col
+
+    #
+    def zigzag_shape(self):
+        zigzag_kernel_1 = np.array([[0, 0, 0, 0, 0],
+                                    [0, 0, 1, 1, 0],
+                                    [0, 1, 1, 0, 0],
+                                    [0, 0, 0, 0, 0]])
+        zigzag_mask_1 = np.array([[0, 0, 1, 1, 0],
+                                  [0, 1, 0, 0, 1],
+                                  [1, 0, 0, 1, 0],
+                                  [0, 1, 1, 0, 0]])
+        dict_4row5col = self.generalised_row_col(zigzag_kernel_1, zigzag_mask_1)
+
+        dict_5row4col = self.generalised_row_col(np.rot90(zigzag_kernel_1), np.rot90(zigzag_mask_1))
+
+        return dict_4row5col, dict_5row4col
+
+
+    def dict_3by3(self):
+        return {
+            "single_pixel": self.single_pixel,
+        }
+
+    def dict_4by3(self):
+        return {
+            "double_pixel": self.double_pixel_4row_3col()
+        }
+
+    def dict_3by4(self):
+        return {
+            "double_pixel": self.double_pixel_3row_4col()
+        }
+
+    def dict_4by4(self):
+        return {
+            "triple_pixel": self.triple_pixel_4row_4col(),
+            "quadruple_pixel": self.quadruple_pixel_4row_4col()
+        }
+
+    def dict_3by5(self):
+        return {
+            "triple_pixel_line": self.tp_line_3row_5col(),
+        }
+
+    def dict_5by3(self):
+        return {
+            "triple_pixel_line": self.tp_line_5row_3col(),
+        }
+
+
+    def dict_45_54(self,shape_tuple=None):
+        quint_45, quint_54 = self.quintuple_pixel()
+        longL_45, longL_54 = self.longL_shape()
+        t_45, t_54 = self.t_shape()
+        zig_45, zig_54 = self.zigzag_shape()
+
+        dict_45 = {
+            "quintuple_pixel": quint_45,
+            "long_L": longL_45,
+            "t_shape": t_45,
+            "zigzag_shape": zig_45
+        }
+        dict_54 = {
+            "quintuple_pixel": quint_54,
+            "long_L": longL_54,
+            "t_shape": t_54,
+            "zigzag_shape": zig_54
+        }
+
+        if shape_tuple == (4,5):
+            return dict_45
+        elif shape_tuple == (5,4):
+            return dict_54
+        else:
+            raise ValueError("Invalid shape")
+
+
+
 
 # TODO consider more complex non isolated setupsh
 # TODO Try train a model to learn how to find what a photon is

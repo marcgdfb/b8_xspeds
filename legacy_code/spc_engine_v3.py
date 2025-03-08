@@ -3,7 +3,7 @@ from pedestal_engine_v2 import *
 from tools import *
 from testImages import *
 
-im8_filepath = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\image_8"
+im8_filepath = r"/data_logs/image_matrices/image_8"
 
 
 # TODO: can generalise all rotated cases. Use i instead of a,b,c,d,e for dictionary and the code for the 3 pixel and 5 pixel is the exact same
@@ -595,7 +595,7 @@ if __name__ == "__main__":
 
     def unitTest_imageOutputs(openIms=False):
         pc = PhotonCounting(indexOfInterest=8, no_photon_adu_thr=80, howManySigma_thr=2, )
-        ut_filepath = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\unit_test"
+        ut_filepath = r"/data_logs/image_matrices/unit_test"
 
         testMat = TestImages().diagonals()
         pc.kernelType_reducedMat(folder_filepath=ut_filepath, filename="unit_test_2", matrix_to_test=testMat,
