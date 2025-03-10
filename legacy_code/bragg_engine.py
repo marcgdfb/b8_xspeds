@@ -29,7 +29,6 @@ class Bragg:
         # Without using single photon counting and retaining dark images the most logical way
         # to try and get a spectrum for Bragg's is to divide the intensity by the expected E value
 
-        # TODO: Add Energy max,min count max min i.e uncertainty.
         df_spectrum = pd.DataFrame({'Energy': [],
                                     'Count': []
                                     })
@@ -42,7 +41,7 @@ class Bragg:
                 print(i,j,normalisation_solid)
                 normalised_count = self.imageMatrix[i,j] / (E*normalisation_solid)
 
-# TODO: Consider solid angle normalisation
+
 
                 df_new = pd.DataFrame({'Energy': [E],
                                        'Count': [normalised_count]})
@@ -56,4 +55,3 @@ class Bragg:
 
         Visualise.spectrum(df_spectrum_grouped)
 
-# TODO: remember to include fano factor for intensity of image element

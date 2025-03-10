@@ -17,13 +17,6 @@ E_Lbeta_eV = 1218.5  # gives an angle of 0.6913018700701734  # Left Hand Side
 # The relevant values used are:
 
 pixel_width = 13.5 * (10 ** (-6))
+length_detector_pixels = 2048
 length_detector = 2048 * pixel_width  # 0.027648
 
-geometryDict = {
-    "crysPitch": -0.3445092569785031,
-    "CrysRoll": 0.018058061625517555,
-    "CamPitch": 0.7965766171590669,
-    "CamRoll": -0.005201895746676618,
-    "rcam": 0.08378234,
-    "thetacam": 2.567,
-}

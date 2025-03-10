@@ -5,12 +5,9 @@ from testImages import *
 
 im8_filepath = r"/data_logs/image_matrices/image_8"
 
-# TODO: add some more common shapes:
 # line of 3
 # shape of 5
 # produce an algorithm that will search with shapes and save array (in reduced scheme) in data logs
-
-# TODO: can generalise all rotated cases. Use i instead of a,b,c,d,e for dictionary and the code for the 3 pixel and 5 pixel is the exact same
 
 def kernelDict():
     def single_pixel():

@@ -329,7 +329,6 @@ class GeometryCalibration:
 
 def optimiseGeometry(imageMatrix, iterations=30, printImage=False):
 
-    # TODO add penatly if 1100 and 1600 eV are not included
 
     def lossFunction(params):
         p = params

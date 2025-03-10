@@ -5,7 +5,7 @@ from probability_tools import *
 from tools import *
 
 
-# TODO: kernel not to give up terms with a diagonal adjacent
+
 
 class Pedestal:
     """
@@ -183,7 +183,6 @@ def kernelDict():
                                    [0, 1, 0],
                                    [0, 0, 0]])
 
-    # TODO Consider how I want to separate diagonal terms
     sp_diagonal_kernel1 = np.array([[0, 0, 0, 0],
                                     [0, 0, 1, 0],
                                     [0, 1, 0, 0],
@@ -288,7 +287,6 @@ class PhotonCounting:
 
     def checKernelType(self, kernelType, returnMatrix=False, diagnostics=False):
 
-        # TODO: Consider all shapes for 3, e.g.
 
         print(f"The kernel type is {kernelType}")
 
@@ -414,7 +412,6 @@ class PhotonCounting:
                             if returnMatrix:
                                 outputMat[i:i + k_rows, j:j + k_cols] = self.imMat[i:i + k_rows, j:j + k_cols]
 
-                            # TODO Consider a certain threshold for value at the center where we want to consider lower thresholded image
 
                             if np.array_equal(kernel,
                                               np.array([[0, 0, 0, 0], [0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 0]])):
@@ -885,11 +882,6 @@ class KernelDict:
         else:
             raise ValueError("Invalid shape")
 
-
-
-
-# TODO consider more complex non isolated setupsh
-# TODO Try train a model to learn how to find what a photon is
 
 
 if __name__ == "__main__":

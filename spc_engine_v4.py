@@ -7,12 +7,8 @@ from datetime import datetime
 
 im8_filepath = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\image_8"
 
+# TODO: test island searching algorithm with unit tests
 
-# TODO: can generalise all rotated cases. Use i instead of a,b,c,d,e for dictionary and the code for the 3 pixel and 5 pixel is the exact same
-# TODO: create Island finding function
-# TODO: generalise kernels to be the same size or search for those of same size
-
-# todo: re run with new 5 that does account for both. also do plus but with one missing, think about running searches simultaneously to reduce run time
 
 def kernelDict():
     def single_pixel():
@@ -670,7 +666,6 @@ class PhotonCounting:
             "list_countij": [],
         }
 
-        # TODO: incorporated saved file or input of file with all points that have been checked to make sure this is quicker
 
         if image_matrix_replace is None:
             moI = self.imMat  # Matrix of Interest
@@ -751,9 +746,6 @@ class PhotonCounting:
 
                             results_dict["list_countij"].append([1, ij_tuple[0], ij_tuple[1]])
 
-
-                    # TODO: Improve how this works
-                    # Simple model will just assume the b
 
 
         print("-"*30)

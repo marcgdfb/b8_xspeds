@@ -1,6 +1,7 @@
-import pandas as pd
+import math
 from constants import *
 
+# -----------Bragg-----------
 def bragg_E_to_theta(E_eV,d=d_beryl):
     """
     Takes input Energy (in eV) and returns the associated angle (in rad)
@@ -24,9 +25,7 @@ def bragg_theta_to_E(theta_rad, d=d_beryl):
     return (h_planck*c)/(2*d*np.sin(theta_rad)*q_e)
 
 
-
-
-# Geometry
+# -----------Geometry-----------
 
 def cartesian_to_spherical(r_cart):
     """
@@ -59,7 +58,6 @@ def spherical_to_cartesian(r_spherical):
     z = r * np.cos(theta)
 
     return np.array([x,y,z])
-
 
 def Rotation_matrix(n_vector, n_final=np.array([0,0,1])):
     """
@@ -142,6 +140,8 @@ def ray_in_planeCamera(v_ray_cart, n_camera_cart, r_camera_cart):
     then convert this point into x,y pixel for the camera.
 
     For some scaling of the unit ray vector D * v_ray = r there is a solution
+
+    :return x_plane,y_plane in meters
     """
     D = np.dot(r_camera_cart, n_camera_cart) / np.dot(v_ray_cart, n_camera_cart)
 
@@ -173,6 +173,58 @@ def xyPlane_to_ray(x_plane,y_plane,camera_ptich,camera_roll,r_camera_cart):
     r_toPlane = r_camera_cart + rPlane
 
     return r_toPlane
+
+def xyPixel_to_xyMeters(x_pixel, y_pixel, x_pixel_length=2048, y_pixel_length=2048, pixelWidth=pixel_width):
+    """
+    Takes the pixel coordinates j,i of matrix and converts it to the coordinate in meters relative to the center
+    of the CCD of the center of a pixel
+    """
+    # The position of the top right corner relative to the origin at the center of the camera
+    x_0_pixels = - x_pixel_length / 2  # -1024
+    y_0_pixels = + y_pixel_length / 2  # +1024
+
+    # 0,2047 pixels are -+1023.5 pixel widths from the origin
+
+    x_coord_meters = (x_pixel + x_0_pixels + 1/2) * pixelWidth
+
+    # 0,2047 pixel are +- 1023.5 pixel widths from origin
+
+    y_coord_meters = (y_0_pixels - y_pixel - 1/2) * pixelWidth
+    return x_coord_meters,y_coord_meters
+
+def xy_meters_to_xyPixel(x_meters,y_meters, x_pixel_length=2048, y_pixel_length=2048, pixelWidth=pixel_width):
+    """
+    Takes the position of a point in meters away from the center of the camera and converts it to
+    pixel coordinates measured from the top right
+    :param x_meters:
+    :param y_meters:
+    :param x_pixel_length:
+    :param y_pixel_length:
+    :param pixelWidth:
+    :return:
+    """
+    x_0_pixels = - x_pixel_length / 2  # -1024
+    y_0_pixels = + y_pixel_length / 2  # +1024
+
+    x_coord_pixels_fromCenter = x_meters / pixelWidth
+    y_coord_pixels_fromCenter = y_meters / pixelWidth
+
+    # the -1/2 is so that if we have the center of the 0th e.g.
+    # - 1023.5 pixels --> 0.5 pixels we want this to be the 0th
+    x_coord_pixels = x_coord_pixels_fromCenter - x_0_pixels
+    y_coord_pixels = abs(y_coord_pixels_fromCenter - y_0_pixels)
+
+    # we want if 3<x<4 then this is in the 4th pixel from the corner
+    # hence using math.ceil to round up
+
+    x_coord_pixels = math.ceil(x_coord_pixels) - 1  # to bias it to [0,2047]
+    y_coord_pixels = math.ceil(y_coord_pixels) - 1
+
+    # this gives -1023.25*pixel_width,+1023.5*pixel_width --> 0,0
+    # this gives +1023.25*pixel_width,-1023.5*pixel_width --> 2047,2047
+
+    return x_coord_pixels,y_coord_pixels
+
 
 
 

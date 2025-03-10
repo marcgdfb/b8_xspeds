@@ -1,15 +1,7 @@
-from calibrateGeometry import *
+from legacy_code.calibrateGeometry_v1 import *
 from legacy_code.spc_engine_v3 import *
 from collections import Counter
 
-
-# TODO: Make it clear in documentation that the mean is subtracted from the result. Do this in readme?
-
-# TODO: Consider the probability given the gaussian of having
-
-# TODO: think about what's going to be optimising :
-# Initial image threshold, no photon some adu thr, 1 photon adu sum, 2 photon adu sum
-# should the sum be different for each number
 
 
 class Spectrum:

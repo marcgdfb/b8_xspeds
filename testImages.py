@@ -2,7 +2,7 @@ import numpy as np
 
 from imagePreProcessing import *
 
-# TODO: Create unit test of shapes
+# TODO: Create more unit tests
 
 class TestImages:
     def __init__(self):

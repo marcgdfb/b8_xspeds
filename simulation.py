@@ -1,8 +1,4 @@
-
-import pandas as pd
-import seaborn as sns
-from tools import *
-from calibrateGeometry import *
+from legacy_code.calibrateGeometry_v1 import *
 
 """
 Spectrum produced by plasma
@@ -50,10 +46,9 @@ def generate_spectrum(energy_start_eV=1090,energy_end_eV=1610,step=0.5,
 
     return df_spectrum
 
-generate_spectrum(plotIm=True)
 
+# generate_spectrum(plotIm=True)
 
-# generate_spectrum()
 
 def simulate_solid_angle(count_perBin,bin_width,
                          geometry_engine,
@@ -128,6 +123,18 @@ def simulate_solid_angle(count_perBin,bin_width,
         countOnCCD_list.append(count_onCCD)
 
 
+    def saveToExcel(filePath = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\solidAngle.xlsx"):
+
+        df = pd.DataFrame()
+        df["Energy"] = energy_array
+        df["Count"] = countOnCCD_list
+        df["Normalised_Count"] = df["Count"] / df["Count"].max()
+
+        df.to_excel(filePath, index=False)
+
+    saveToExcel()
+
+
     if plot:
         xarray = energy_array
         yarray = np.array(countOnCCD_list)
@@ -137,19 +144,6 @@ def simulate_solid_angle(count_perBin,bin_width,
         plt.ylabel("Count")
         plt.title("Proportion of Istropically emitted counts on CCD")
         plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -199,20 +193,21 @@ class Simulation:
 if __name__ == '__main__':
 
     def check_solid_angle():
-        crysPitch = -0.3444672207603088
-        CrysRoll = 0.018114148603524255
-        CamPitch = 0.7950530342947064
-        CamRoll = -0.005323879756451509
-        rcam = 0.08395021
-        thetacam = 2.567
-        rcamSpherical = np.array([rcam, thetacam, np.pi])
-        geo_engine = Geometry(crysPitch,CrysRoll,CamPitch,CamRoll,rcamSpherical)
 
-        simulate_solid_angle(count_perBin=1000000,
+        geo_engine = geo_engine_withSavedParams()
+
+        # simulate_solid_angle(count_perBin=5000000,
+        #                      bin_width=1,
+        #                      geometry_engine=geo_engine,
+        #                      lowboundE=1080,
+        #                      highboundE=1700,
+        #                      plot=True)
+
+        simulate_solid_angle(count_perBin=5000000,
                              bin_width=1,
                              geometry_engine=geo_engine,
-                             lowboundE=1090,
-                             highboundE=1610,
+                             lowboundE=1080,
+                             highboundE=1082,
                              plot=True)
 
-    check_solid_angle()
+    # check_solid_angle()

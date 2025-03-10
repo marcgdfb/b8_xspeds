@@ -233,6 +233,7 @@ class Investigate:
         plt.show()
 
 
+
 class Clean:
 
     @staticmethod
@@ -332,7 +333,6 @@ for idx_data in range(len(imData)):
     if idx_data not in list_darkData:
         list_data.append(idx_data)
 
-print(list_data)
 
 array8Test = imData[8]
 high_intensity_points = Clean.matrixAboveThreshold(array8Test, 100)
@@ -400,6 +400,8 @@ if __name__ == '__main__':
         Investigate.plotMatClear(MoI,title,withLines=True)
 
 
+
+
     # clearPlotInvestigations(9,55,60)
     # for i in range(0,20):
     #     clearPlotInvestigations(i,100)
@@ -443,8 +445,10 @@ if __name__ == '__main__':
     # plt.imshow(doubledThresholdedPoints, cmap="hot"), plt.title(f"Thresholded Image 8 (200>I_pixel>100"), plt.show()
     # plt.imshow(imTensorThresholded),plt.title(f"Pooled Image {ktuple} greater than {lbThreshold} less than {ubThreshold}"),plt.show()
 
-    plt.imshow(im_very_clear, cmap='hot')
-    plt.show()
+    # plt.imshow(im_very_clear, cmap='hot')
+    # plt.show()
 
+
+    Investigate.printIntenstiy_vertically(high_intensity_points,"8")
 
     pass

@@ -3,6 +3,10 @@ import math
 from scipy.integrate import quad
 import matplotlib.pyplot as plt
 
+# Some of the code here is from ideas of finding the probability that a shape arises from the noise.
+# It was decided to prioritise accuracy and hence threshold out most of this instead, making some of the starting
+# ideas here redundant. Though findExpectedCountsAbove123sigma is still used
+
 def gaussian(x,A,x0,sigma):
     return A * np.exp(-((x - x0) ** 2) / (2 * sigma ** 2))
 
@@ -84,7 +88,7 @@ if __name__ == "__main__":
 
     # test_probabilityOfStructures()
 
-    generateImageGauss(x0=0,sigma=8.9,nrows=2048,ncols=2048,printMatrix=True,threshold_num_sigma=3)
+    # generateImageGauss(x0=0,sigma=8.9,nrows=2048,ncols=2048,printMatrix=True,threshold_num_sigma=3)
 
 
 

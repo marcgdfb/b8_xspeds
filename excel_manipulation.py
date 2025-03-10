@@ -17,7 +17,7 @@ def abc_excel_append():
     cols = ['image_index', 'A_left', 'B_left', 'C_left', 'A_right', 'B_right',
             'C_right', 'outlier']
 
-    excl_filename = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\ABC_lines.xlsx"
+    excl_filename = r"/stored_variables/ABC_lines.xlsx"
 
     exc = Excel(excl_filename)
     df = exc.df.copy()
@@ -43,7 +43,7 @@ def abc_excel_append():
 
 def geometric_append():
 
-    excl_filename = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\Geometry.xlsx"
+    excl_filename = r"/stored_variables/Geometry.xlsx"
 
     exc = Excel(excl_filename)
     df = exc.df.copy()
@@ -66,4 +66,3 @@ def geometric_append():
     df.to_excel(excl_filename, index=False)
 
 
-geometric_append()

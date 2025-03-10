@@ -179,7 +179,6 @@ def solidAngleNormalisation(energy_eV, n_crystal, n_camera, r_camera):
 
         v_ray_spherical = cartesian_to_spherical(v_ray)
 
-        # TODO: consider whether this geometry is entirely correct
 
         print(v_ray_spherical)
 

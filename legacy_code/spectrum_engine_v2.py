@@ -1,15 +1,9 @@
-from calibrateGeometry import *
+from legacy_code.calibrateGeometry_v1 import *
 from spc_engine_v4 import *
 from collections import Counter
 import time
 
 
-# TODO: Make it clear in documentation that the mean is subtracted from the result. Do this in readme?
-
-# TODO: Consider the probability given the gaussian of having
-
-# Initial image threshold, no photon some adu thr, 1 photon adu sum, 2 photon adu sum
-# should the sum be different for each number
 
 
 class Spectrum:
@@ -144,9 +138,7 @@ class Spectrum:
         if plotSpectrum:
             self.plotSpectrum(energyList, band_width, spectrumTitle, intensity_arb_unit, logarithmic)
 
-        # Set the first 10 columns and the first 200 rows to 0 for now
-        # TODO investigate top of image
-
+        # The first 3 columns have straight lines going down the vertical
         imMatPRemoved[:, 0:3] = 0
         # imMatPRemoved[0:200, :] = 0
 
@@ -185,6 +177,7 @@ class Spectrum:
 
         moI = spc_engine.imMat
 
+        # The first 3 columns have vertical lines that are due to edge effects
         moI[:, 0:3] = 0
 
         if row_separate != 0:
@@ -416,24 +409,6 @@ class Spectrum:
         return energyList
 
 
-class Optimise:
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def optimiseEmissionPeaks(band_width):
-        spec = Spectrum(8, crysPitch, CrysRoll, CamPitch, CamRoll, rcamSpherical, removeTopRows=0,
-                        how_many_sigma=2, noPhoton_adu_thr=30, sp_adu_thr=100, dp_adu_thr=200,
-                        )
-
-        energy_list = spec.multiPixel_island(band_width=band_width, )
-
-        energyBins = np.arange(min(energy_list), max(energy_list) + band_width, band_width)
-        photonEnergies = np.array(energy_list)
-        count, bins_edges = np.histogram(photonEnergies, energyBins)
-
-        # Find bin centers
-        bin_centers = (bins_edges[:-1] + bins_edges[1:]) / 2
 
 
 
