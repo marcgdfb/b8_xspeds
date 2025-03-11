@@ -351,6 +351,9 @@ if __name__ == '__main__':
             f"Image 8 Thresholded above {thr}")
         plt.show()
 
+
+    plotRawMatThresholdedMat(1)
+
     def plotThreeDeviations(indexOfInterest=8,zoomArea=(500,1000,500,1000)):
 
         mean = 60
@@ -402,10 +405,6 @@ if __name__ == '__main__':
 
 
 
-    # clearPlotInvestigations(9,55,60)
-    # for i in range(0,20):
-    #     clearPlotInvestigations(i,100)
-
 
     def histograms(indexOfInterest=8,verticalLine=0):
         # Thresholded8Above90 = Clean.matrixAboveThreshold(array8Test, 80)
@@ -449,6 +448,6 @@ if __name__ == '__main__':
     # plt.show()
 
 
-    Investigate.printIntenstiy_vertically(high_intensity_points,"8")
+    # Investigate.printIntenstiy_vertically(high_intensity_points,"8")
 
     pass

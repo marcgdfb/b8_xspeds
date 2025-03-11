@@ -5,7 +5,7 @@ from testImages import *
 import time
 from datetime import datetime
 
-im8_filepath = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\image_8"
+im8_filepath = r"old_logs_and_stored_variables/v1/data_logs\image_matrices\image_8"
 
 # TODO: test island searching algorithm with unit tests
 
@@ -969,7 +969,7 @@ if __name__ == "__main__":
     def unitTest_imageOutputs(openIms=False):
 
         pc = PhotonCounting(indexOfInterest=8, no_photon_adu_thr=80, howManySigma_thr=2, )
-        ut_filepath = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\unit_test"
+        ut_filepath = r"old_logs_and_stored_variables/v1/data_logs\image_matrices\unit_test"
 
         testMat = TestImages().diagonals()
         pc.kernelType_reducedMat(folder_filepath=ut_filepath, filename="unit_test_2", matrix_to_test=testMat,

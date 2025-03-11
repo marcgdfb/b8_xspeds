@@ -1,4 +1,4 @@
-from calibrate_geometry_v2 import *
+from calibrate_geometry_v3 import *
 from spc_engine_v4 import *
 import time
 
@@ -6,6 +6,8 @@ import time
 # TODO: Make it clear in documentation that the mean is subtracted from the result. Do this in readme?
 
 # TODO: Make sure that each image uses the fitted curves specific to that curve to correct for xray jitter
+
+# TODO: Consider poisson error in this ~ sqrt(N)
 
 
 class Spectrum:
@@ -211,7 +213,7 @@ def dict_ij_perEnergyBin(band_width=1):
     print("Creating dictionary of ij coordinates in each bin")
 
     energy_of_pixelMat = np.load(
-        r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\energy_of_pixel.npy")
+        r"/old_logs_and_stored_variables/v2/energy_of_pixel.npy")
 
     energyBands = np.arange(1000, 1700 + band_width, band_width)
 
@@ -296,7 +298,7 @@ def determine_solidAnglePerEnergyBin(band_width=1, numberOfPoints=3, plotdistrib
         df["Upper Bound"] = l_ub
         df["Solid Angle"] = l_solidAngle
 
-        excl_filename = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\solidAngle.xlsx"
+        excl_filename = r"/old_logs_and_stored_variables/v2/solidAngle.xlsx"
 
         df.to_excel(excl_filename, index=False)
 

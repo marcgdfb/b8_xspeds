@@ -17,7 +17,7 @@ def abc_excel_append():
     cols = ['image_index', 'A_left', 'B_left', 'C_left', 'A_right', 'B_right',
             'C_right', 'outlier']
 
-    excl_filename = r"/stored_variables/ABC_lines.xlsx"
+    excl_filename = r"old_logs_and_stored_variables/v1/ABC_lines.xlsx"
 
     exc = Excel(excl_filename)
     df = exc.df.copy()
@@ -43,7 +43,7 @@ def abc_excel_append():
 
 def geometric_append():
 
-    excl_filename = r"/stored_variables/Geometry.xlsx"
+    excl_filename = r"old_logs_and_stored_variables/v2/Geometry.xlsx"
 
     exc = Excel(excl_filename)
     df = exc.df.copy()

@@ -1,15 +1,18 @@
 from scipy.optimize import minimize, curve_fit
 from imagePreProcessing import *
+from pedestal_engine_v2 import *
 from tools import *
 from datetime import datetime
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import itertools
-import cma
+import os
+import json
 
 geometryLog = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\geometryFitLog.txt"
 quadLineLog = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\quadraticLineFits.txt"
+
 
 # TODO: find and log uncertainty in values the C value for fitting
 
@@ -47,7 +50,7 @@ class Geometry:
         crystal
         :param phiStepSize: Step size over which phi is iterated, smaller will run quicker but not produce the whole line.
         This is not optimised
-        :param findMaxPhi: If true the largest phi value on the ccd will be found and printed
+        :param findMaxPhi: If true the largest phi value on the CCD will be found and printed
         :return: A list containing further lists of [x_meters, y_meters]
         """
 
@@ -97,6 +100,22 @@ class Geometry:
         return list_xy
 
     def xy_pixelCoords_of_E(self, energy_eV, phiStepSize=0.0001):
+        list_xy_coords = self.xy_coords_of_E(energy_eV, phiStepSize)
+        list_xy_pixel_coords = []
+
+        for row in list_xy_coords:
+            # E.G. row[0] = 3.5 pixel widths (i.e. center of 4th away from center)
+            # We want if x is within 3-4 pixel widths that this is in the 4th pixel
+
+            x_pixel, y_pixel = xy_meters_to_xyPixel(x_meters=row[0], y_meters=row[1])
+
+            # Check if any existing coordinate has the same y_pixel value
+            if not any(y == y_pixel for _, y in list_xy_pixel_coords):
+                list_xy_pixel_coords.append([x_pixel, y_pixel])
+
+        return list_xy_pixel_coords
+
+    def xy_pixelCoords_of_E_old(self, energy_eV, phiStepSize=0.0001):
         list_xy_coords = self.xy_coords_of_E(energy_eV, phiStepSize)
         list_xy_pixel_coords = []
 
@@ -195,13 +214,14 @@ class Geometry:
 
 
 class Calibrate:
-    def __init__(self, imageMatrix, logTextFile=None):
+    def __init__(self, imageMatrix, logTextFile=None, adjacentWeight=1.0, width_lineIntegral_5=False):
         self.imMat = imageMatrix
         self.log = logTextFile
+        self.adjacentWeight = adjacentWeight
+        self.width_lineIntegral_5 = width_lineIntegral_5
 
     # The following code serves to compute quadratic curves that describe our lines of interest
-    def computeLine(self, a, b, cBounds, plotGraph=False, cPlotVal=1450, plotResults=False,
-                    adjacentWeight=1):
+    def computeLine(self, a, b, cBounds, plotGraph=False, cPlotVal=1450, plotResults=False, ):
         """
         Assumes the lines can be parameterised as a quadratic X = A * (Y - B) ** 2 + C
         For a certain value of A and B the line integral is performed for different C values within the bounds
@@ -247,10 +267,16 @@ class Calibrate:
 
                     if 0 <= xL < xWidth:
                         totVal += self.imMat[yL, xL]
-                    if xL + 1 < xWidth:
-                        totVal += adjacentWeight * self.imMat[yL, xL + 1]
-                    if 0 < xWidth:
-                        totVal += adjacentWeight * self.imMat[yL, xL - 1]
+                        if xL + 1 < xWidth:
+                            totVal += self.adjacentWeight * self.imMat[yL, xL + 1]
+                        if 0 < xL - 1:
+                            totVal += self.adjacentWeight * self.imMat[yL, xL - 1]
+
+                    if self.width_lineIntegral_5:
+                        if xL + 2 < xWidth:
+                            totVal += self.adjacentWeight / 2 * self.imMat[yL, xL + 2]
+                        if 0 < xL - 2:
+                            totVal += self.adjacentWeight / 2 * self.imMat[yL, xL - 2]
 
                 list_c_integralVal.append([cval, totVal])
 
@@ -267,6 +293,7 @@ class Calibrate:
 
         return lineintrgral
 
+    # noinspection PyTupleAssignmentBalance
     def fitGaussianToLineIntegral(self, a, b, cBounds, plotGauss=False):
         """
         For a given a, b in a quadratic of the form X =  * (Y - b) ** 2 + C we fit a gaussian to the peak.
@@ -281,11 +308,14 @@ class Calibrate:
         Note if the c bounds is too small such that we cannot compuete a standard deviation sigma is set to 0.
         This is handlded in the next part of code. It is worth saying this is to be avoided
         """
+
+        count_runtimeError = 0
+
         lineIntegralList = self.computeLine(a, b, cBounds)
         cVals = np.array(lineIntegralList)[:, 0]
         lineIntegralVals = np.array(lineIntegralList)[:, 1]
 
-        def gaussian(X, amp_, xpeak, sigma_, c_offset):
+        def gaussian(X, amp_, sigma_, xpeak, c_offset):
             return amp_ * np.exp(-(X - xpeak) ** 2 / (2 * sigma_ ** 2)) + c_offset
 
         amp_guess = np.max(lineIntegralVals)
@@ -294,25 +324,36 @@ class Calibrate:
         c_offset_guess = np.min(lineIntegralVals)
 
         try:
-            popt, pcov = curve_fit(gaussian, cVals, lineIntegralVals,
-                                   p0=[amp_guess, xpeak_guess, sigma_guess, c_offset_guess], maxfev=2000)
+            amp_sigma_cPeak, pcov = curve_fit(gaussian, cVals, lineIntegralVals,
+                                              p0=[amp_guess, xpeak_guess, sigma_guess, c_offset_guess], maxfev=2000)
             if plotGauss:
                 plt.plot(cVals, lineIntegralVals)
-                plt.plot(cVals, gaussian(cVals, *popt))
+                plt.plot(cVals, gaussian(cVals, *amp_sigma_cPeak))
                 plt.ylabel("Line Integral with width 3 pixels")
                 plt.xlabel("C value in x = A(y-B)**2 + C")
                 plt.show()
 
-            amp = popt[0]
-            sigma = popt[2]
-            cPeak = popt[1]
+            amp_sigma_cPeak_errors = np.sqrt(np.diag(pcov))
 
-            return amp, sigma, cPeak
+            return amp_sigma_cPeak, amp_sigma_cPeak_errors
         except RuntimeError:
             print(RuntimeError)
-            print("The fit could not be computed. A larger range for cBounds can often help with a better fit.")
+            count_runtimeError += 1
+            if count_runtimeError > 10:
+                raise RuntimeError("Too many RuntimeErrors, stopping function execution.")
 
-            return amp_guess, 0, xpeak_guess
+            else:
+                print("The fit could not be computed. Retrying with a larger range of C")
+
+                clower = cBounds[0]
+                cHigher = cBounds[1]
+                c_dif = (cHigher - clower) / 4
+
+                cBoundsNew = (int(clower - c_dif), int(cHigher + c_dif))
+
+                print("New C bounds: ", cBoundsNew)
+
+                self.fitGaussianToLineIntegral(a, b, cBoundsNew, plotGauss)
 
     def optimiseLines(self, aBounds, bBounds, cBounds, sigmaWeighting=1, plotGraph=False,
                       plotGauss=False):
@@ -328,17 +369,18 @@ class Calibrate:
         :return:
         """
 
-        def lossFunc(params, sigmaWeighting):
+        def lossFunc(params, sigmaWeighting_):
 
             print("-" * 40)
             Aval, Bval = params
 
-            amp_, sigma, cPeak = self.fitGaussianToLineIntegral(Aval, Bval, cBounds)
+            amp_sigma_cPeak_, amp_sigma_cPeak_errors_ = self.fitGaussianToLineIntegral(Aval, Bval, cBounds)
 
-            print(f"A = {Aval}, B = {Bval}, amplitude = {amp_},sigma = {sigma},cPeak = {cPeak}")
+            print(
+                f"A = {Aval}, B = {Bval}, amplitude = {amp_sigma_cPeak_[0]},sigma = {amp_sigma_cPeak_[1]},cPeak = {amp_sigma_cPeak_[2]}")
             # Aiming to maximise amp while minimising sigma
-            print("Loss", -amp_ + sigmaWeighting * sigma)
-            return -amp_ + sigmaWeighting * sigma
+            print("Loss", -amp_sigma_cPeak_[0] + sigmaWeighting_ * amp_sigma_cPeak_[1])
+            return -amp_sigma_cPeak_[0] + sigmaWeighting_ * amp_sigma_cPeak_[1]
 
         bounds = [aBounds, bBounds]
         initial_guess = np.array([(aBounds[0] + aBounds[1]) / 2, (bBounds[0] + bBounds[1]) / 2])
@@ -351,38 +393,34 @@ class Calibrate:
         A, B = result.x
         lossOptimised = lossFunc(result.x, sigmaWeighting)
 
-        amp, sigma, cPeak = self.fitGaussianToLineIntegral(A, B, cBounds, plotGauss=plotGauss)
+        amp_sigma_cPeak, amp_sigma_cPeak_errors = self.fitGaussianToLineIntegral(A, B, cBounds, plotGauss=plotGauss)
+        cPeak = amp_sigma_cPeak[2]
+        cPeak_unc = amp_sigma_cPeak_errors[2]
 
         def logResults():
             append_to_file(self.log, "-" * 30)
             append_to_file(self.log, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             append_to_file(self.log,
                            f"aBounds = {aBounds}" + "\n" + f"bBounds = {bBounds}" + "\n" + f"cBounds = {cBounds}")
-            append_to_file(self.log, f"Optimised A = {A}, B = {B}, C = {cPeak}")
+            append_to_file(self.log, f"Optimised A = {A}, B = {B}, C = {cPeak} +- {cPeak_unc}")
             append_to_file(self.log, f"Loss = {lossOptimised}")
 
             print("-" * 30)
             print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             print(f"aBounds = {aBounds}" + "\n" + f"bBounds = {bBounds}" + "\n" + f"cBounds = {cBounds}")
-            print(f"Optimised A = {A}, B = {B}, C = {cPeak}")
+            print(f"Optimised A = {A}, B = {B}, C = {cPeak} +- {cPeak_unc}")
             print(f"Loss = {lossOptimised}")
 
         if self.log is not None:
             logResults()
 
-        if sigma == 0:
-            if self.log is not None:
-                append_to_file(self.log, "Gaussian not fitted due to RuntimeError")
-        else:
-            if self.log is not None:
-                append_to_file(self.log, "Gaussian fitted successfully")
         if plotGraph:
             self.computeLine(A, B, cBounds, plotGraph=True, cPlotVal=cPeak, plotResults=True)
 
-        return A, B, cPeak
+        return A, B, cPeak, cPeak_unc
 
     def matrixWithLinesOptimisation(self, plotLines=False, returnABC=False, plotGauss=False,
-                                    cBoundsLeft=(1200, 1360), aBoundsLeft=(0.00001, 0.0001), bBoundsLeft=(800, 950),
+                                    cBoundsLeft=(1220, 1340), aBoundsLeft=(0.00001, 0.0001), bBoundsLeft=(800, 950),
                                     cBoundsRight=(1380, 1460), aBoundsRight=(0.00001, 0.0001), bBoundsRight=(800, 950),
                                     ):
 
@@ -392,13 +430,13 @@ class Calibrate:
         append_to_file(self.log, "-" * 30)
         append_to_file(self.log, "Left Line")
         print("Working on the left Line")
-        ALeft, BLeft, cLeft = self.optimiseLines(aBoundsLeft, bBoundsLeft, cBoundsLeft, plotGraph=False,
-                                                 plotResults=False, plotGauss=plotGauss)
+        ALeft, BLeft, cLeft, cLeft_Peak_unc = self.optimiseLines(aBoundsLeft, bBoundsLeft, cBoundsLeft, plotGraph=False,
+                                                                 plotGauss=plotGauss)
         append_to_file(self.log, "-" * 30)
         append_to_file(self.log, "Right Line")
         print("Working on the right Line")
-        ARight, BRight, cRight = self.optimiseLines(aBoundsRight, bBoundsRight, cBoundsRight, plotGraph=False,
-                                                    plotResults=False, plotGauss=plotGauss)
+        ARight, BRight, cRight, cRight_Peak_unc = self.optimiseLines(aBoundsRight, bBoundsRight, cBoundsRight,
+                                                                     plotGraph=False, plotGauss=plotGauss)
 
         leftLineMat = self.matrixWithLines(ALeft, BLeft, cLeft, plotLines=False)
         rightLineMat = self.matrixWithLines(ARight, BRight, cRight, plotLines=False)
@@ -408,8 +446,8 @@ class Calibrate:
             plt.show()
 
         if returnABC:
-            left_vars = [ALeft, BLeft, cLeft]
-            right_vars = [ARight, BRight, cRight]
+            left_vars = [ALeft, BLeft, cLeft, cLeft_Peak_unc]
+            right_vars = [ARight, BRight, cRight, cRight_Peak_unc]
             return leftLineMat, rightLineMat, left_vars, right_vars
         else:
             return leftLineMat, rightLineMat
@@ -485,7 +523,7 @@ class Bragg:
         :return: The energy in eV of this point
         """
 
-        # The x_imPlane,y_imPlane are those within the plane of the ccd.
+        # The x_imPlane,y_imPlane are those within the plane of the CCD.
         # The r_spherical coordinate goes to the center of the image
 
         # This is v_ray_cam from before
@@ -506,345 +544,6 @@ class Bragg:
         x_coord, y_coord = xyPixel_to_xyMeters(xPixel_imPlane, yPixel_imPlane)
 
         return self.xyImagePlane_to_energy(x_coord, y_coord)
-
-
-def calibrateSaveQuadratics(indexOfInterest, thr=100, pltGauss=False, plot_finalLines=False, save=False,
-                            logFile=quadLineLog,
-                            bBounds=(790, 870),
-                            folderpath_to_save=r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\ABC_lines\unsupervised"
-                            ):
-    print(indexOfInterest)
-    image_mat = loadData()[indexOfInterest]
-    image_mat = np.where(image_mat > thr, image_mat, 0)
-    imMatVeryClear = imVeryClear(image_mat, 0, (21, 5))
-
-    cal = Calibrate(image_mat, logFile)
-    append_to_file(cal.log, "-" * 30)
-    append_to_file(cal.log, f"Index of Interest {indexOfInterest}, thresholded above {thr}")
-    leftLineMat, rightLineMat, left_vars, right_vars = cal.matrixWithLinesOptimisation(False, returnABC=True,
-                                                                                       plotGauss=pltGauss,
-                                                                                       cBoundsLeft=(1220, 1340))
-    Aleft = left_vars[0]
-    Bleft = left_vars[1]
-    cLeft = left_vars[2]
-    ARight = right_vars[0]
-    Bright = right_vars[1]
-    cRight = right_vars[2]
-
-    LinesMatLeft = np.where(leftLineMat > 0, thr, 0)
-    LinesMatRight = np.where(rightLineMat > 0, thr, 0)
-
-    if plot_finalLines:
-        plt.figure(figsize=(10, 5))
-        plt.subplot(1, 2, 1), plt.imshow(image_mat, cmap='hot'), plt.title(
-            f"Image {indexOfInterest} thresholded above {thr}")
-        plt.subplot(1, 2, 2), plt.imshow(imMatVeryClear + LinesMatLeft + LinesMatRight, cmap='hot'), plt.title(
-            f"Average Pooled Image with geometric lines")
-        plt.show()
-        if save:
-            if input("Type 1 to save") == "1":
-                print("saving...")
-                vals = np.array([[Aleft, Bleft, cLeft],
-                                 [ARight, Bright, cRight]])
-                filename = f"{indexOfInterest}"
-                np.save(f"{folderpath_to_save}/{filename}.npy", vals)
-    else:
-        if save:
-            print("saving...")
-            vals = np.array([[Aleft, Bleft, cLeft],
-                             [ARight, Bright, cRight]])
-            filename = f"{indexOfInterest}"
-            np.save(f"{folderpath_to_save}/{filename}.npy", vals)
-
-
-def optimiseGeometryToCalibratedLines(indexOfInterest, initialGuess, bounds, useSavedVals=True, thr=100,
-                                      r_thetaval=2.567, logTextFile=None, saveResults=False,
-                                      weight_ofsettedPoints=0.5, iterations=30, plot=False):
-    print(indexOfInterest)
-    image_mat = loadData()[indexOfInterest]
-    image_mat = np.where(image_mat > thr, image_mat, 0)
-    # imMatVeryClear = imVeryClear(image_mat, 0, (21, 5))
-
-    if useSavedVals:
-        folderpath = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\ABC_lines\unsupervised"
-        filename = f"{indexOfInterest}"
-        vals = np.load(f"{folderpath}/{filename}.npy")
-        Aleft = vals[0, 0]
-        Bleft = vals[0, 1]
-        Cleft = vals[0, 2]
-        Aright = vals[1, 0]
-        Bright = vals[1, 1]
-        Cright = vals[1, 2]
-
-        print("Using Saved Values")
-        print("Left Line:")
-        print(f"Aleft: {Aleft}, Bleft: {Bleft}, Cleft: {Cleft}")
-        print("Right Line:")
-        print(f"Aright: {Aright}, Bright: {Bright}, Cright: {Cright}")
-
-        linesMatLeft = Calibrate(image_mat, None).matrixWithLines(Aoptimised=Aleft, Boptimised=Bleft,
-                                                                  Coptimised=Cleft, plotLines=False)
-        linesMatRight = Calibrate(image_mat, None).matrixWithLines(Aoptimised=Aright, Boptimised=Bright,
-                                                                   Coptimised=Cright, plotLines=False)
-
-    else:
-        cal = Calibrate(image_mat, quadLineLog)
-        append_to_file(cal.log, "-" * 30)
-        append_to_file(cal.log, "Lines fits used for geometric fitting at a similar time")
-        linesMatLeft, linesMatRight, left_vars, right_vars = cal.matrixWithLinesOptimisation(plotLines=False,
-                                                                                             returnABC=False,
-                                                                                             cBoundsLeft=(1220, 1340),
-                                                                                             )
-
-        print("Left Line:")
-        print(f"Aleft: {left_vars[0]}, Bleft: {left_vars[1]}, Cleft: {left_vars[2]}")
-        print("Right Line:")
-        print(f"Aright: {right_vars[0]}, Bright: {right_vars[1]}, Cright: {right_vars[2]}")
-
-        if saveResults:
-            print("saving...")
-            vals = np.array([[left_vars[0], left_vars[1], left_vars[2]],
-                             [right_vars[0], right_vars[1], right_vars[2]]])
-            folderpath = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\ABC_lines\unsupervised"
-            filename = f"{indexOfInterest}"
-            np.save(f"{folderpath}/{filename}.npy", vals)
-
-    def lossFunction(params):
-        p = params
-
-        geo = Geometry(crystal_pitch=p[0], crystal_roll=p[1],
-                       camera_pitch=p[2], camera_roll=p[3],
-                       r_cam=p[4], r_theta=r_thetaval, )
-
-        alphaLineCoords_pixel = geo.xy_pixelCoords_of_E(E_Lalpha_eV)  # More Right / right line
-        betaLineCoords_pixel = geo.xy_pixelCoords_of_E(E_Lbeta_eV)  # More Left / left line
-
-        lossPositive = 0
-
-        # Treat each Line Separately as not to over encourage curvature
-        for row in alphaLineCoords_pixel:
-            x_pixel = row[0]
-            y_pixel = row[1]
-
-            lossPositive += linesMatRight[y_pixel, x_pixel]
-
-            if x_pixel + 1 < geo.xWidth:
-                lossPositive += weight_ofsettedPoints * linesMatRight[y_pixel, x_pixel + 1]
-            if x_pixel - 1 >= 0:
-                lossPositive += weight_ofsettedPoints * linesMatRight[y_pixel, x_pixel - 1]
-
-        for row in betaLineCoords_pixel:
-            x_pixel = row[0]
-            y_pixel = row[1]
-
-            lossPositive += linesMatLeft[y_pixel, x_pixel]
-
-            if x_pixel + 1 < geo.xWidth:
-                lossPositive += weight_ofsettedPoints * linesMatLeft[y_pixel, x_pixel + 1]
-            if x_pixel - 1 >= 0:
-                lossPositive += weight_ofsettedPoints * linesMatLeft[y_pixel, x_pixel - 1]
-
-        # We wish to maximise the integral along these lines
-        loss = - lossPositive
-
-        def printParamsAndLoss():
-            print("-" * 30)
-            print("Params:")
-            print("crysPitch = ", p[0], "CrysRoll = ", p[1])
-            print("CamPitch = ", p[2], "CamRoll = ", p[3])
-            print("rcamSpherical = ", np.array([p[4], r_thetaval, np.pi]))
-            print("Loss = ", loss)
-
-        printParamsAndLoss()
-
-        return loss
-
-    result = minimize(lossFunction, initialGuess, bounds=bounds, method='Nelder-Mead', options={'maxiter': iterations},
-                      callback=callbackminimise)
-
-    optimisedParams = result.x
-
-    crystal_pitch = optimisedParams[0]
-    crystal_roll = optimisedParams[1]
-    camera_pitch = optimisedParams[2]
-    camera_roll = optimisedParams[3]
-    rcamSphericalOptimised = np.array([optimisedParams[4], r_thetaval, np.pi])
-
-    ncrysOptimised = nVectorFromEuler(crystal_pitch, crystal_roll)
-    ncamOptimised = nVectorFromEuler(camera_pitch, camera_roll)
-    rcamSphericalOptimised = np.array([optimisedParams[4], r_thetaval, np.pi])
-    lossOptimised = lossFunction(optimisedParams)
-
-    geoOptimised = Geometry(crystal_pitch=crystal_pitch, crystal_roll=crystal_roll,
-                            camera_pitch=camera_pitch, camera_roll=camera_roll,
-                            r_cam=optimisedParams[4], r_theta=r_thetaval, )
-    linesMatGeoOptimised = geoOptimised.createLinesMatrix(image_mat, 1)
-
-    if plot:
-        plt.figure(figsize=(10, 5))
-        plt.subplot(1, 2, 1), plt.imshow(linesMatLeft + linesMatRight, cmap='hot'), plt.title('Quadratic Lines')
-        plt.subplot(1, 2, 2), plt.imshow(linesMatGeoOptimised + linesMatLeft + linesMatRight, cmap='hot'), plt.title(
-            'Geometic Lines plotted Over')
-        plt.show()
-
-    def logResults():
-        append_to_file(logTextFile, "-" * 30)
-        append_to_file(logTextFile, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        append_to_file(logTextFile, f"crystal pitch bounds = {bounds[0]}, crystal roll bounds = {bounds[1]}")
-        append_to_file(logTextFile, f"camera pitch bounds = {bounds[2]}, camera roll bounds = {bounds[3]}")
-        append_to_file(logTextFile, f"rcamBounds = {bounds[4]}")
-
-        append_to_file(logTextFile, f"optimised crystal pitch = {crystal_pitch}, n crystal roll = {crystal_roll}")
-        append_to_file(logTextFile, f"optimised camera pitch = {camera_pitch}, n camera roll = {camera_roll}")
-        append_to_file(logTextFile, f"optimised rcam spherical = {rcamSphericalOptimised}")
-
-        append_to_file(logTextFile, f"Optimised n crystal = {ncrysOptimised}")
-        append_to_file(logTextFile, f"Optimised n camera = {ncamOptimised}")
-        append_to_file(logTextFile, f"Optimised r camera = {rcamSphericalOptimised}")
-        append_to_file(logTextFile, f"Loss = {lossOptimised}")
-
-        print("-" * 30)
-        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        print(f"Optimised crystal pitch = {crystal_pitch}, n crystal roll = {crystal_roll}")
-        print(f"optimised camera pitch = {camera_pitch}, n camera roll = {camera_roll}")
-        print(f"optimised rcam spherical = {rcamSphericalOptimised}")
-        print(f"Optimised n crystal = {ncrysOptimised}")
-        print(f"Optimised n camera = {ncamOptimised}")
-        print(f"Optimised r camera = {rcamSphericalOptimised}")
-        print(f"Loss = {lossOptimised}")
-
-    if logTextFile is not None:
-        logResults()
-
-    if saveResults:
-        folderpath = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\geometry"
-        filename = f"{indexOfInterest}"
-        np.save(f"{folderpath}/{filename}.npy", optimisedParams)
-
-
-def visualiseQuadParams(list_indexOI):
-    vals_dict = {
-        "A Left": [],
-        "B Left": [],
-        "C Left": [],
-        "A Right": [],
-        "B Right": [],
-        "C Right": [],
-    }
-
-    for iOI in list_indexOI:
-        folderpath_quad = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\ABC_lines\unsupervised_2"
-        filename = f"{iOI}"
-
-        vals = np.load(f"{folderpath_quad}/{filename}.npy")
-        Aleft = vals[0, 0]
-        Bleft = vals[0, 1]
-        Cleft = vals[0, 2]
-        Aright = vals[1, 0]
-        Bright = vals[1, 1]
-        Cright = vals[1, 2]
-
-        optimised_params = [Aleft, Bleft, Cleft, Aright, Bright, Cright]
-
-        for idx_param, key in enumerate(vals_dict.keys()):
-            vals_dict[key].append(optimised_params[idx_param])
-
-    fig, axes = plt.subplots(1, 6, figsize=(18, 3))
-
-    for idx, (key, ax) in enumerate(zip(vals_dict.keys(), axes)):
-        sns.violinplot(data=vals_dict[key],
-                       inner="point",
-                       color="#00BFFF", linewidth=0, ax=ax)
-
-        sns.stripplot(data=vals_dict[key], color="black", alpha=0.7, ax=ax)
-        ax.set_title(f"{key}")
-        ax.grid(True)
-        ax.tick_params(axis='y', labelsize=5)
-        # ax.set_ylabel(f"{key}")
-
-    plt.tight_layout()
-    plt.show()
-
-
-def visualiseGeometryFitParams(list_indexOI):
-    vals_dict = {
-        "crystal pitch (rad)": [],
-        "crystal roll (rad)": [],
-        "camera pitch (rad)": [],
-        "camera roll (rad)": [],
-        "r cam (m)": [], }
-    iOI_labels = []
-
-    for iOI in list_indexOI:
-        folderpath_geo = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\geometry"
-        filename = f"{iOI}"
-        optimised_geoParams = np.load(f"{folderpath_geo}/{filename}.npy")
-
-        iOI_labels.append(f"Image {iOI}")
-
-        for idx_param, key in enumerate(vals_dict.keys()):
-            vals_dict[key].append(optimised_geoParams[idx_param])
-
-    fig, axes = plt.subplots(1, 5, figsize=(20, 4))
-
-    for idx, (key, ax) in enumerate(zip(vals_dict.keys(), axes)):
-        sns.violinplot(data=vals_dict[key],
-                       inner="point",
-                       color="#00BFFF", linewidth=0, ax=ax)
-
-        sns.stripplot(data=vals_dict[key], color="black", alpha=0.7, ax=ax)
-        ax.set_title(f"{key}")
-        ax.grid(True)
-        ax.tick_params(axis='y', labelsize=5)
-        # ax.set_ylabel(f"{key}")
-
-    plt.tight_layout()
-    plt.show()
-
-
-def geometry_params(printVals=False):
-    filepath_excel = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\Geometry.xlsx"
-    colsOI = ['crystal_pitch (rad)', 'crystal_roll (rad)', 'camera_pitch (rad)', 'camera_roll (rad)', 'r_cam (m)']
-    df_vals = pd.read_excel(filepath_excel)
-    mean_vals = df_vals.mean()
-    std_vals = df_vals.std()
-
-    dict_vals = {}
-    dict_names = ['crys_pitch', 'crys_roll', 'cam_pitch', 'cam_roll', 'r_cam']
-    for column, dictName in zip(colsOI, dict_names):
-        dict_vals[dictName] = {
-            "mean": mean_vals[column],
-            "std": std_vals[column]
-        }
-
-        if printVals:
-            print(f"{dictName}: {mean_vals[column]} +- {std_vals[column]}")
-
-    return dict_vals
-
-
-def geo_engine_withSavedParams(printVals=False):
-    geo_dict = geometry_params(printVals)
-    crys_pitch_mean = geo_dict['crys_pitch']["mean"]
-    # crys_pitch_std = geo_dict['crys_pitch']["std"]
-
-    crys_roll_mean = geo_dict['crys_roll']["mean"]
-    # crys_roll_std = geo_dict['crys_roll']["std"]
-
-    cam_pitch_mean = geo_dict['cam_pitch']["mean"]
-    # cam_pitch_std = geo_dict['cam_pitch']["std"]
-
-    cam_roll_mean = geo_dict["cam_roll"]["mean"]
-    # cam_roll_std = geo_dict["cam_roll"]["std"]
-
-    r_cam_mean = geo_dict['r_cam']['mean']
-    # r_cam_std = geo_dict['r_cam']['std']
-
-    geo_engine = Geometry(crystal_pitch=crys_pitch_mean, crystal_roll=crys_roll_mean,
-                          camera_pitch=cam_pitch_mean, camera_roll=cam_roll_mean,
-                          r_cam=r_cam_mean, )
-
-    return geo_engine
 
 
 class SolidAngle:
@@ -908,177 +607,554 @@ class SolidAngle:
         return self.integrate_d_omega(xMin, xMax, yMin, yMax, number_points=number_points)
 
 
+# ---------- Calibration and saving of parameters ----------
+
+def mat_thr_aboveNsigma(index_of_interest, how_many_sigma, ):
+    image_mat = loadData()[index_of_interest]
+    # ----------pedestal mean and sigma----------
+    ped_mean, ped_sigma = pedestal_mean_sigma_awayFromLines(image_mat, index_of_interest)
+    thr = ped_mean + how_many_sigma * ped_sigma
+
+    image_mat = np.where(image_mat > thr, image_mat, 0)
+
+    return image_mat, thr
+
+
+# ---------- Quadratic:
+
+def calibrate_and_save_quadratics(indexOfInterest,
+                                  howManySigma=2, adjacent_pixel_weighting=0.5, pixelwidth_lineintegral_5=True,
+                                  bBounds=None,
+                                  folderpath="stored_variables", saveData=True,
+                                  plot_Results=False,
+                                  ):
+    # initialise subfolder if it doesn't exist
+    index_folder = os.path.join(folderpath, str(indexOfInterest))
+    if not os.path.exists(index_folder):
+        os.makedirs(index_folder)
+
+    logFile = os.path.join(index_folder, "quadratic_fits_log.txt")
+
+    print("Index: ", indexOfInterest)
+
+    # ----------pedestal mean and sigma----------
+    image_mat, thr = mat_thr_aboveNsigma(indexOfInterest, howManySigma)
+    imMatVeryClear = imVeryClear(image_mat, 0, (21, 5))
+
+    # ---------- Initialise Calibrate Engine and log the initialising parameters ----------
+
+    cal = Calibrate(image_mat, logFile, adjacentWeight=adjacent_pixel_weighting,
+                    width_lineIntegral_5=pixelwidth_lineintegral_5)
+    append_to_file(cal.log, "-" * 30)
+    append_to_file(cal.log, f"Index of Interest {indexOfInterest}, thresholded above {howManySigma} sigma")
+    append_to_file(cal.log, f"Adjacent pixels weighted by {adjacent_pixel_weighting}")
+    if pixelwidth_lineintegral_5:
+        append_to_file(cal.log, "Line integral used pixel width of 5")
+    else:
+        append_to_file(cal.log, "Line integral used pixel width of 3")
+
+    # Note the values of A,B,C are appended to the log file within the following functions:
+    if bBounds is None:
+        leftLineMat, rightLineMat, left_vars, right_vars = cal.matrixWithLinesOptimisation(False, returnABC=True,
+                                                                                           plotGauss=plot_Results,
+                                                                                           bBoundsLeft=(800, 950),
+                                                                                           bBoundsRight=(800, 950), )
+    else:
+        leftLineMat, rightLineMat, left_vars, right_vars = cal.matrixWithLinesOptimisation(False, returnABC=True,
+                                                                                           plotGauss=plot_Results,
+                                                                                           bBoundsLeft=bBounds,
+                                                                                           bBoundsRight=bBounds)
+
+    LinesMatLeft = np.where(leftLineMat > 0, thr, 0)
+    LinesMatRight = np.where(rightLineMat > 0, thr, 0)
+
+    if plot_Results:
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1), plt.imshow(image_mat, cmap='hot'), plt.title(
+            f"Image {indexOfInterest} thresholded above {thr}")
+        plt.subplot(1, 2, 2), plt.imshow(imMatVeryClear + LinesMatLeft + LinesMatRight, cmap='hot'), plt.title(
+            f"Average Pooled Image with geometric lines")
+        plt.show()
+
+    if saveData:
+        filepath = os.path.join(index_folder, "quadratic_fits.npy")
+        quad_vars = np.array(left_vars + right_vars)
+        np.save(filepath, quad_vars)
+
+
+def access_saved_quadratics(indexOfInterest, folderpath="stored_variables"):
+    index_folder = os.path.join(folderpath, str(indexOfInterest))
+    filepath = os.path.join(index_folder, "quadratic_fits.npy")
+
+    saved_variables = np.load(filepath)
+
+    left_vars = saved_variables[0:4]
+    print(left_vars)
+    right_vars = saved_variables[4:8]
+    print(right_vars)
+
+    return left_vars, right_vars
+
+
+def testPlotQuadLines(indexOfInterest, how_many_sigma=2, plot_gauss=True, ):
+    left_vars, right_vars = access_saved_quadratics(indexOfInterest)
+    Aleft = left_vars[0]
+    Bleft = left_vars[1]
+    Cleft = left_vars[2]
+
+    Aright = right_vars[0]
+    Bright = right_vars[1]
+    Cright = right_vars[2]
+
+    print(indexOfInterest)
+    image_mat, thr = mat_thr_aboveNsigma(indexOfInterest, how_many_sigma)
+    mat_plot = image_mat
+
+    calibrate_tpql = Calibrate(image_mat, None, adjacentWeight=0.5, width_lineIntegral_5=True)
+    if plot_gauss:
+        calibrate_tpql.fitGaussianToLineIntegral(a=Aleft, b=Bleft, cBounds=(Cleft - 60, Cleft + 60),
+                                                 plotGauss=True)
+        calibrate_tpql.fitGaussianToLineIntegral(a=Aright, b=Bright, cBounds=(Cright - 60, Cright + 60),
+                                                 plotGauss=True, )
+
+    mat_quadLeft = calibrate_tpql.matrixWithLines(Aoptimised=Aleft, Boptimised=Bleft,
+                                                  Coptimised=Cleft, plotLines=False)
+    mat_quadRight = calibrate_tpql.matrixWithLines(Aoptimised=Aright, Boptimised=Bright,
+                                                   Coptimised=Cright, plotLines=False, )
+
+    val_line = np.max(mat_plot) / 4
+
+    mat_quadLeft = np.where(mat_quadLeft > 0, val_line, 0)
+    mat_quadRight = np.where(mat_quadRight > 0, val_line, 0)
+
+    # plt.imshow(mat_plot + mat_quadLeft + mat_quadRight, cmap="hot")
+    plt.imshow(mat_quadLeft + mat_quadRight, cmap="hot")
+    titleL1 = f"Image {indexOfInterest} with saved A(y-B)**2 + C coefficients"
+    titleL2 = f"\nLeft: A={Aleft:.2f}, B={Bleft:.2f}, C={Cleft:.2f}"
+    titleL3 = f"\nRight: A={Aright:.2f}, B={Bright:.2f}, C={Cright:.2f}"
+    plt.title(titleL1 + titleL2 + titleL3)
+    plt.show()
+
+
+# ---------- Geometric:
+
+
+def optimiseGeometryToCalibratedLines(indexOfInterest,
+                                      initialGuess, bounds, r_thetaval=2.567,
+                                      folderpath="stored_variables", useSavedData=True, saveData=True,
+                                      how_many_sigma=2,
+                                      weight_ofsettedPoints=0.5, iterations=30, plot=False):
+    # Ensuring the folder is initialised
+    index_folder = os.path.join(folderpath, str(indexOfInterest))
+    if not os.path.exists(index_folder):
+        os.makedirs(index_folder)
+    logTextFile = os.path.join(index_folder, "geometric_fits_log.txt")
+
+    def logStart():
+        log_ = Append_to_file(logTextFile)
+        log_.append("-" * 30)
+        log_.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        log_.append(f"crystal pitch bounds = {bounds[0]}, crystal roll bounds = {bounds[1]}")
+        log_.append(f"camera pitch bounds = {bounds[2]}, camera roll bounds = {bounds[3]}")
+        log_.append(f"rcamBounds = {bounds[4]}")
+        log_.append(f"Initial Guess = {initialGuess}")
+        log_.append(f"r_thetaval = {r_thetaval}")
+        log_.append(f"how many sigma = {how_many_sigma}")
+        log_.append(f"weight_ofsettedPoints = {weight_ofsettedPoints}")
+        log_.append(f"iterations = {iterations}")
+
+    logStart()
+
+    print(indexOfInterest)
+    image_mat = loadData()[indexOfInterest]
+
+    # Getting threshold using pedetsal engine
+    ped_mean, ped_sigma = pedestal_mean_sigma_awayFromLines(image_mat, indexOfInterest)
+    thr = ped_mean + how_many_sigma * ped_sigma
+
+    image_mat = np.where(image_mat > thr, image_mat, 0)
+    # imMatVeryClear = imVeryClear(image_mat, 0, (21, 5))
+
+    if useSavedData:
+
+        left_vars_, right_vars_ = access_saved_quadratics(indexOfInterest, folderpath)
+
+        print("Using Saved Values")
+        print("Left Line:")
+        print(f"Aleft: {left_vars_[0]}, Bleft: {left_vars_[1]}, Cleft: {left_vars_[2]} +- {left_vars_[3]}")
+        print("Right Line:")
+        print(f"Aright: {right_vars_[0]}, Bright: {right_vars_[1]}, Cright: {right_vars_[2]} +- {right_vars_[3]}")
+
+        linesMatLeft = Calibrate(image_mat, None, adjacentWeight=0.5, width_lineIntegral_5=True).matrixWithLines(
+            Aoptimised=left_vars_[0], Boptimised=left_vars_[1],
+            Coptimised=left_vars_[2], plotLines=False)
+        linesMatRight = Calibrate(image_mat, None, adjacentWeight=0.5, width_lineIntegral_5=True).matrixWithLines(
+            Aoptimised=right_vars_[0], Boptimised=right_vars_[1],
+            Coptimised=right_vars_[2], plotLines=False)
+
+    else:
+        cal = Calibrate(image_mat, quadLineLog, adjacentWeight=0.5, width_lineIntegral_5=True)
+        append_to_file(cal.log, "-" * 30)
+        append_to_file(cal.log, "Lines fits used for geometric fitting at a similar time")
+        linesMatLeft, linesMatRight, left_vars, right_vars = cal.matrixWithLinesOptimisation(plotLines=False,
+                                                                                             returnABC=False,
+                                                                                             cBoundsLeft=(1220, 1340),
+                                                                                             )
+
+        print("Left Line:")
+        print(f"Aleft: {left_vars[0]}, Bleft: {left_vars[1]}, Cleft: {left_vars[2]}")
+        print("Right Line:")
+        print(f"Aright: {right_vars[0]}, Bright: {right_vars[1]}, Cright: {right_vars[2]}")
+
+    def lossFunction(params):
+        p = params
+
+        geo = Geometry(crystal_pitch=p[0], crystal_roll=p[1],
+                       camera_pitch=p[2], camera_roll=p[3],
+                       r_cam=p[4], r_theta=r_thetaval, )
+
+        alphaLineCoords_pixel = geo.xy_pixelCoords_of_E(E_Lalpha_eV)  # More Right / right line
+        betaLineCoords_pixel = geo.xy_pixelCoords_of_E(E_Lbeta_eV)  # More Left / left line
+
+
+        def computeLossOld():
+            lossPositive = 0
+            # Treat each Line Separately as not to over encourage curvature
+            for row in alphaLineCoords_pixel:
+                x_pixel = row[0]
+                y_pixel = row[1]
+
+                lossPositive += linesMatRight[y_pixel, x_pixel]
+
+                if x_pixel + 1 < geo.xpixels:
+                    lossPositive += weight_ofsettedPoints * linesMatRight[y_pixel, x_pixel + 1]
+                if x_pixel - 1 >= 0:
+                    lossPositive += weight_ofsettedPoints * linesMatRight[y_pixel, x_pixel - 1]
+
+            for row in betaLineCoords_pixel:
+                x_pixel = row[0]
+                y_pixel = row[1]
+
+                lossPositive += linesMatLeft[y_pixel, x_pixel]
+
+                if x_pixel + 1 < geo.xWidth:
+                    lossPositive += weight_ofsettedPoints * linesMatLeft[y_pixel, x_pixel + 1]
+                if x_pixel - 1 >= 0:
+                    lossPositive += weight_ofsettedPoints * linesMatLeft[y_pixel, x_pixel - 1]
+
+            return -lossPositive
+
+        def computeLossNew():
+            loss_to_be_minimised = 0
+
+            left = [betaLineCoords_pixel,linesMatLeft]
+            right = [alphaLineCoords_pixel,linesMatRight]
+
+            for pixel_mat_list in [left,right]:
+                geometric_line_pixels = pixel_mat_list[0]
+                linesMat = pixel_mat_list[1]
+
+                for row in geometric_line_pixels:
+                    x_pixel = row[0]
+                    y_pixel = row[1]
+
+                    # now we want to find the pixel distance
+                    # Finding the indices in the given row that are non-zero
+                    nonzero_indices = np.nonzero(linesMat[y_pixel])[0]
+                    mean_position = np.mean(nonzero_indices)
+
+                    difference = abs(x_pixel-mean_position)
+
+                    # print("y_pixel", y_pixel, "x_pixel", x_pixel)
+                    # print("nonzero_indices", nonzero_indices)
+                    # print("mean_position", mean_position)
+                    # print(difference)
+
+
+                    loss_to_be_minimised += difference
+
+            return loss_to_be_minimised
+
+        # We wish to maximise the integral along these lines
+        loss = computeLossNew()
+
+        def printParamsAndLoss():
+            print("-" * 30)
+            print("Params:")
+            print("crysPitch = ", p[0], "CrysRoll = ", p[1])
+            print("CamPitch = ", p[2], "CamRoll = ", p[3])
+            print("rcamSpherical = ", np.array([p[4], r_thetaval, np.pi]))
+            print("Loss = ", loss)
+
+        printParamsAndLoss()
+
+        return loss
+
+    result = minimize(lossFunction, initialGuess, bounds=bounds, method='Nelder-Mead', options={'maxiter': iterations},
+                      callback=callbackminimise)
+
+    optimisedParams = result.x
+
+    crystal_pitch = optimisedParams[0]
+    crystal_roll = optimisedParams[1]
+    camera_pitch = optimisedParams[2]
+    camera_roll = optimisedParams[3]
+    rcamSphericalOptimised = np.array([optimisedParams[4], r_thetaval, np.pi])
+
+    ncrysOptimised = nVectorFromEuler(crystal_pitch, crystal_roll)
+    ncamOptimised = nVectorFromEuler(camera_pitch, camera_roll)
+    rcamSphericalOptimised = np.array([optimisedParams[4], r_thetaval, np.pi])
+    lossOptimised = lossFunction(optimisedParams)
+
+    geoOptimised = Geometry(crystal_pitch=crystal_pitch, crystal_roll=crystal_roll,
+                            camera_pitch=camera_pitch, camera_roll=camera_roll,
+                            r_cam=optimisedParams[4], r_theta=r_thetaval, )
+    linesMatGeoOptimised = geoOptimised.createLinesMatrix(image_mat, 1)
+
+    if plot:
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1), plt.imshow(linesMatLeft + linesMatRight, cmap='hot'), plt.title('Quadratic Lines')
+        plt.subplot(1, 2, 2), plt.imshow(linesMatGeoOptimised + linesMatLeft + linesMatRight, cmap='hot'), plt.title(
+            'Geometic Lines plotted Over')
+        plt.show()
+
+    def logResults():
+        append_to_file(logTextFile, "-" * 30)
+        append_to_file(logTextFile, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+        append_to_file(logTextFile, f"optimised crystal pitch = {crystal_pitch}, n crystal roll = {crystal_roll}")
+        append_to_file(logTextFile, f"optimised camera pitch = {camera_pitch}, n camera roll = {camera_roll}")
+        append_to_file(logTextFile, f"optimised rcam spherical = {rcamSphericalOptimised}")
+
+        append_to_file(logTextFile, f"Optimised n crystal = {ncrysOptimised}")
+        append_to_file(logTextFile, f"Optimised n camera = {ncamOptimised}")
+        append_to_file(logTextFile, f"Optimised r camera = {rcamSphericalOptimised}")
+        append_to_file(logTextFile, f"Loss = {lossOptimised}")
+
+        print("-" * 30)
+        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        print(f"Optimised crystal pitch = {crystal_pitch}, n crystal roll = {crystal_roll}")
+        print(f"optimised camera pitch = {camera_pitch}, n camera roll = {camera_roll}")
+        print(f"optimised rcam spherical = {rcamSphericalOptimised}")
+        print(f"Optimised n crystal = {ncrysOptimised}")
+        print(f"Optimised n camera = {ncamOptimised}")
+        print(f"Optimised r camera = {rcamSphericalOptimised}")
+        print(f"Loss = {lossOptimised}")
+
+    if logTextFile is not None:
+        logResults()
+
+    if saveData:
+        filepath = os.path.join(index_folder, "geometric_fits.npy")
+        geometric_vars = np.array(optimisedParams)
+        np.save(filepath, geometric_vars)
+
+    return lossOptimised
+
+
+def geometry_fitMinimise(indexOfInterest, useSavedVals=True, iterations_=50, weight_ofsettedPoints=0.5):
+    crysPitch = -0.3445
+    CrysRoll = 0.0184
+    CamPitch = 0.814
+    CamRoll = -0.00537
+    rcam = 0.0839
+
+    initialGuess = np.array([crysPitch,  # crystal pitch
+                             CrysRoll,  # crystal roll
+                             CamPitch,  # Camera pitch, pi/4 is ~ 0.785
+                             CamRoll,  # camera roll
+                             rcam  # r camera
+                             ])
+
+    bounds = [(-0.346, -0.343),  # crystal pitch Bounds
+              (None, None),  # crystal roll Bounds
+              (0.7, 0.9),  # Camera pitch Bounds
+              (None, None),  # camera roll Bounds
+              (0.0820, 0.0860),  # rcamBounds
+              ]
+
+    optimisedLoss = optimiseGeometryToCalibratedLines(indexOfInterest,
+                                                      initialGuess, bounds, r_thetaval=2.567,
+                                                      folderpath="stored_variables", useSavedData=useSavedVals,
+                                                      saveData=True,
+                                                      how_many_sigma=2,
+                                                      weight_ofsettedPoints=weight_ofsettedPoints,
+                                                      iterations=iterations_, plot=False)
+
+    if optimisedLoss < 4000:
+        print("loss is not sufficiently high, Consider trying again with more iterations")
+
+
+
+def access_saved_geometric(indexOfInterest, folderpath="stored_variables"):
+    index_folder = os.path.join(folderpath, str(indexOfInterest))
+    filepath = os.path.join(index_folder, "geometric_fits.npy")
+
+    saved_variables = np.load(filepath)
+
+    crys_pitch = saved_variables[0]
+    crys_roll = saved_variables[1]
+    cam_pitch = saved_variables[2]
+    cam_roll = saved_variables[3]
+    r_cam = saved_variables[4]
+
+    return crys_pitch, crys_roll, cam_pitch, cam_roll, r_cam
+
+
+def testPlotGeometryLines(indexOfInterest, how_many_sigma=2, r_theta=2.567):
+    print(indexOfInterest)
+
+    image_mat, thr = mat_thr_aboveNsigma(indexOfInterest, how_many_sigma)
+    imMatVeryClear = imVeryClear(image_mat, 0, (21, 5))
+
+    crysPitch, CrysRoll, CamPitch, CamRoll, rcam = access_saved_geometric(indexOfInterest)
+
+    rcamSpherical = np.array([rcam, r_theta, np.pi])
+
+    print("crysPitch = ", crysPitch, "CrysRoll = ", CrysRoll)
+    print("CamPitch = ", CamPitch, "CamRoll = ", CamRoll)
+    print("rcamSpherical = ", rcamSpherical)
+
+    geo = Geometry(crysPitch, CrysRoll, CamPitch, CamRoll, r_cam=rcam, r_theta=r_theta)
+    geolinesMat = geo.createLinesMatrix(imTest, np.max(im_very_clear), phiStepSize=0.0001)
+
+    def get_quadLinesMat():
+        left_vars, right_vars = access_saved_quadratics(indexOfInterest)
+        Aleft = left_vars[0]
+        Bleft = left_vars[1]
+        Cleft = left_vars[2]
+
+        Aright = right_vars[0]
+        Bright = right_vars[1]
+        Cright = right_vars[2]
+
+        linesMatLeft = Calibrate(image_mat, None, adjacentWeight=0.5, width_lineIntegral_5=True).matrixWithLines(
+            Aoptimised=Aleft, Boptimised=Bleft,
+            Coptimised=Cleft, plotLines=False)
+        linesMatRight = Calibrate(image_mat, None, adjacentWeight=0.5, width_lineIntegral_5=True).matrixWithLines(
+            Aoptimised=Aright, Boptimised=Bright,
+            Coptimised=Cright, plotLines=False, )
+
+        return np.where(linesMatLeft > 0, np.max(im_very_clear) / 2, 0), np.where(linesMatRight > 0,
+                                                                                  np.max(im_very_clear) / 2, 0)
+
+    matLeft, matRight = get_quadLinesMat()
+
+    plt.imshow(imMatVeryClear + geolinesMat, cmap="hot")
+    # plt.imshow(geolinesMat, cmap="hot")
+    title_l1 = f"Lα and Lβ lines for image {indexOfInterest}"
+    title_l2 = f"\ncrystal: Pitch = {crysPitch}, Roll = {CrysRoll}"
+    title_l3 = f"\ncamera: Pitch = {CamPitch}, Roll = {CamRoll}"
+    title_l4 = f"\nr_camera = {rcam}"
+    plt.title(title_l1 + title_l2 + title_l3 + title_l4)
+    plt.show()
+
+    plt.imshow(matLeft + matRight + geolinesMat, cmap="jet")
+    plt.title("")
+    plt.show()
+
+
+# ---------- Visualisations of Params
+# Each crystal must be accounted for individually to avoid x-ray jitter error
+
+def violinPlot_QuadParams(list_indexOI, fp_excel="stored_variables/quadratic_fits.xlsx"):
+    vals_dict = {
+        "A Left": [],
+        "B Left": [],
+        "C Left": [],
+        "A Right": [],
+        "B Right": [],
+        "C Right": [],
+    }
+
+    for iOI in list_indexOI:
+
+        Aleft, Bleft, Cleft, Cleft_unc, Aright, Bright, Cright, Cright_unc = access_saved_quadratics(iOI, fp_excel)
+
+        optimised_params = [Aleft, Bleft, Cleft, Aright, Bright, Cright]
+
+        for idx_param, key in enumerate(vals_dict.keys()):
+            vals_dict[key].append(optimised_params[idx_param])
+
+    fig, axes = plt.subplots(1, 6, figsize=(18, 3))
+
+    for idx, (key, ax) in enumerate(zip(vals_dict.keys(), axes)):
+        sns.violinplot(data=vals_dict[key],
+                       inner="point",
+                       color="#00BFFF", linewidth=0, ax=ax)
+
+        sns.stripplot(data=vals_dict[key], color="black", alpha=0.7, ax=ax)
+        ax.set_title(f"{key}")
+        ax.grid(True)
+        ax.tick_params(axis='y', labelsize=5)
+        # ax.set_ylabel(f"{key}")
+
+    plt.tight_layout()
+    plt.show()
+
+
+def visualiseGeometryFitParams(list_indexOI):
+    vals_dict = {
+        "crystal pitch (rad)": [],
+        "crystal roll (rad)": [],
+        "camera pitch (rad)": [],
+        "camera roll (rad)": [],
+        "r cam (m)": [], }
+    iOI_labels = []
+
+    for iOI in list_indexOI:
+        folderpath_geo = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\geometry"
+        filename = f"{iOI}"
+        optimised_geoParams = np.load(f"{folderpath_geo}/{filename}.npy")
+
+        iOI_labels.append(f"Image {iOI}")
+
+        for idx_param, key in enumerate(vals_dict.keys()):
+            vals_dict[key].append(optimised_geoParams[idx_param])
+
+    fig, axes = plt.subplots(1, 5, figsize=(20, 4))
+
+    for idx, (key, ax) in enumerate(zip(vals_dict.keys(), axes)):
+        sns.violinplot(data=vals_dict[key],
+                       inner="point",
+                       color="#00BFFF", linewidth=0, ax=ax)
+
+        sns.stripplot(data=vals_dict[key], color="black", alpha=0.7, ax=ax)
+        ax.set_title(f"{key}")
+        ax.grid(True)
+        ax.tick_params(axis='y', labelsize=5)
+        # ax.set_ylabel(f"{key}")
+
+    plt.tight_layout()
+    plt.show()
+
+
+# TODO: change usage of the following to use indexOfInterest. Want to fit for each image individually to account for x-ray jitter
+
+def geo_engine_withSavedParams(index_oI, printVals=False):
+    crys_pitch, crys_roll, cam_pitch, cam_roll, r_cam = access_saved_geometric(index_oI)
+
+    geo_engine = Geometry(crystal_pitch=crys_pitch, crystal_roll=crys_roll,
+                          camera_pitch=cam_pitch, camera_roll=cam_roll,
+                          r_cam=r_cam, )
+
+    return geo_engine
+
+
 if __name__ == '__main__':
 
     # visualiseGeometryFitParams(list_data)
     # visualiseQuadParams(list_data)
 
-    def fitMinimise(indexOfInterest, useSavedVals):
-        crysPitch = -0.3444672207603088
-        CrysRoll = 0.018114148603524255
-        CamPitch = 0.7950530342947064
-        CamRoll = -0.005323879756451509
-        rcam = 0.08395021
-        thetacam = 2.567
+    def plotBinWidthLines(bin_width, index_of_interest):
 
-        initialGuess = np.array([crysPitch,  # crystal pitch
-                                 CrysRoll,  # crystal roll
-                                 CamPitch,  # Camera pitch, pi/4 is ~ 0.785
-                                 CamRoll,  # camera roll
-                                 rcam  # r camera
-                                 ])
-
-        bounds = [(None, None),  # crystal pitch Bounds
-                  (None, None),  # crystal roll Bounds
-                  (0, None),  # Camera pitch Bounds
-                  (None, None),  # camera roll Bounds
-                  (0.07, 0.15),  # rcamBounds
-                  ]
-
-        optimiseGeometryToCalibratedLines(indexOfInterest, initialGuess, bounds, useSavedVals=useSavedVals, thr=100,
-                                          r_thetaval=thetacam, logTextFile=None, saveResults=True,
-                                          weight_ofsettedPoints=0.5, iterations=30, )
-
-
-
-
-    def testPlotGeometryLines(indexOfInterest, thr=100):
-        print(indexOfInterest)
-        image_mat = loadData()[indexOfInterest]
-        image_mat = np.where(image_mat > thr, image_mat, 0)
-        imMatVeryClear = imVeryClear(image_mat, 0, (21, 5))
-
-        folderpath_geo = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\geometry"
-        filename = f"{indexOfInterest}"
-        optimised_geoParams = np.load(f"{folderpath_geo}/{filename}.npy")
-
-        crysPitch = optimised_geoParams[0]
-        CrysRoll = optimised_geoParams[1]
-        CamPitch = optimised_geoParams[2]
-        CamRoll = optimised_geoParams[3]
-        rcam = optimised_geoParams[4]
-        r_theta = 2.567
-        rcamSpherical = np.array([rcam, r_theta, np.pi])
-
-        print("crysPitch = ", crysPitch, "CrysRoll = ", CrysRoll)
-        print("CamPitch = ", CamPitch, "CamRoll = ", CamRoll)
-        print("rcamSpherical = ", rcamSpherical)
-
-        geo = Geometry(crysPitch, CrysRoll, CamPitch, CamRoll, r_cam=rcam, r_theta=r_theta)
-        geolinesMat = geo.createLinesMatrix(imTest, np.max(im_very_clear), phiStepSize=0.0001)
-
-        def get_quadLinesMat():
-            folderpath_quad = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\ABC_lines\unsupervised"
-            filename_quad = f"{indexOfInterest}"
-            vals = np.load(f"{folderpath_quad}/{filename_quad}.npy")
-            Aleft = vals[0, 0]
-            Bleft = vals[0, 1]
-            Cleft = vals[0, 2]
-            Aright = vals[1, 0]
-            Bright = vals[1, 1]
-            Cright = vals[1, 2]
-
-            linesMatLeft = Calibrate(image_mat, None).matrixWithLines(Aoptimised=Aleft, Boptimised=Bleft,
-                                                                      Coptimised=Cleft, plotLines=False)
-            linesMatRight = Calibrate(image_mat, None).matrixWithLines(Aoptimised=Aright, Boptimised=Bright,
-                                                                       Coptimised=Cright, plotLines=False)
-
-            return linesMatLeft, linesMatRight
-
-        plt.imshow(imMatVeryClear + geolinesMat, cmap="hot")
-        title_l1 = f"Lα and Lβ lines for image {indexOfInterest}"
-        title_l2 = f"\ncrystal: Pitch = {crysPitch}, Roll = {CrysRoll}"
-        title_l3 = f"\ncamera: Pitch = {CamPitch}, Roll = {CamRoll}"
-        title_l4 = f"\nr_camera = {rcam}"
-        plt.title(title_l1 + title_l2 + title_l3 + title_l4)
-        plt.show()
-
-
-    # testPlotGeometryLines(1)
-
-    def testPlotQuadLines(indexOfInterest, thr=100):
-        print(indexOfInterest)
-        image_mat = loadData()[indexOfInterest]
-        image_mat = np.where(image_mat > thr, image_mat, 0)
-        imMatVeryClear = imVeryClear(image_mat, 0, (21, 5))
-        mat_plot = image_mat
-
-        folderpath_quad = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables\ABC_lines\unsupervised"
-        filename = f"{indexOfInterest}"
-        vals = np.load(f"{folderpath_quad}/{filename}.npy")
-        Aleft = vals[0, 0]
-        Bleft = vals[0, 1]
-        Cleft = vals[0, 2]
-        Aright = vals[1, 0]
-        Bright = vals[1, 1]
-        Cright = vals[1, 2]
-
-        mat_quadLeft = Calibrate(image_mat, None).matrixWithLines(Aoptimised=Aleft, Boptimised=Bleft,
-                                                                  Coptimised=Cleft, plotLines=False)
-        mat_quadRight = Calibrate(image_mat, None).matrixWithLines(Aoptimised=Aright, Boptimised=Bright,
-                                                                   Coptimised=Cright, plotLines=False)
-
-        val_line = np.max(mat_plot) / 4
-
-        mat_quadLeft = np.where(mat_quadLeft > 0, val_line, 0)
-        mat_quadRight = np.where(mat_quadRight > 0, val_line, 0)
-
-        plt.imshow(mat_plot + mat_quadLeft + mat_quadRight, cmap="hot")
-        titleL1 = f"Image {indexOfInterest} with saved A(y-B)**2 + C coefficients"
-        titleL2 = f"\nLeft: A={Aleft:.2f}, B={Bleft:.2f}, C={Cleft:.2f}"
-        titleL3 = f"\nRight: A={Aright:.2f}, B={Bright:.2f}, C={Cright:.2f}"
-        plt.title(titleL1 + titleL2 + titleL3)
-        plt.show()
-
-
-    # testPlotQuadLines(1)
-
-    def showTwoLines(index_of_interest, thr=90, ):
-        ImMat = imData[index_of_interest]
-        ImMat = np.where(ImMat > thr, ImMat, 0)
-
-        imMatVeryClear = imVeryClear(ImMat, 0, (21, 5))
-        # cal = Calibrate(imTest, None)
-        # cal.optimiseLines(aBounds=[0,1e-04],bBounds=[861,863],cBounds=[1100,1400],plotGraph=True,plotResults=True)
-
-        linesMatLeft = Calibrate(imTest, None).matrixWithLines(Aoptimised=6.613794078473409e-05, Boptimised=862,
-                                                               Coptimised=1278, plotLines=False)
-        LinesMatLeft = np.where(linesMatLeft > 0, thr, 0)
-        linesMatRight = Calibrate(imTest, None).matrixWithLines(Aoptimised=7.063102423636962e-05, Boptimised=862,
-                                                                Coptimised=1418, plotLines=False)
-        LinesMatRight = np.where(linesMatRight > 0, thr, 0)
-
-        plt.figure(figsize=(10, 5))
-        plt.subplot(1, 2, 1), plt.imshow(ImMat, cmap='hot'), plt.title(
-            f"Image {index_of_interest} thresholded above {thr}")
-        plt.subplot(1, 2, 2), plt.imshow(imMatVeryClear + LinesMatLeft + LinesMatRight, cmap='hot'), plt.title(
-            f"Average Pooled Image with geometric lines")
-        plt.show()
-
-
-    def plotBinWidthLines(bin_width):
-
-        geo_dict = geometry_params()
-        crys_pitch_mean = geo_dict['crys_pitch']["mean"]
-        crys_pitch_std = geo_dict['crys_pitch']["std"]
-
-        crys_roll_mean = geo_dict['crys_roll']["mean"]
-        crys_roll_std = geo_dict['crys_roll']["std"]
-
-        cam_pitch_mean = geo_dict['cam_pitch']["mean"]
-        cam_pitch_std = geo_dict['cam_pitch']["std"]
-
-        cam_roll_mean = geo_dict["cam_roll"]["mean"]
-        cam_roll_std = geo_dict["cam_roll"]["std"]
-
-        r_cam_mean = geo_dict['r_cam']['mean']
-        r_cam_std = geo_dict['r_cam']['std']
+        crys_pitch, crys_roll, cam_pitch, cam_roll, r_cam = access_saved_geometric(index_of_interest)
 
         energyBins = np.arange(1100, 1600 + bin_width, bin_width)
 
-        geo_engine = Geometry(crystal_pitch=crys_pitch_mean, crystal_roll=crys_roll_mean,
-                              camera_pitch=cam_pitch_mean, camera_roll=cam_roll_mean,
-                              r_cam=r_cam_mean, )
+        geo_engine = Geometry(crystal_pitch=crys_pitch, crystal_roll=crys_roll,
+                              camera_pitch=cam_pitch, camera_roll=cam_roll,
+                              r_cam=r_cam, )
 
         fig, ax = plt.subplots(figsize=(8, 8))
 
@@ -1098,29 +1174,15 @@ if __name__ == '__main__':
         plt.show()
 
 
-    def plotBinWidthLinesMatrix(bin_width):
+    def plotBinWidthLinesMatrix(bin_width, index_of_interest):
 
-        geo_dict = geometry_params()
-        crys_pitch_mean = geo_dict['crys_pitch']["mean"]
-        crys_pitch_std = geo_dict['crys_pitch']["std"]
-
-        crys_roll_mean = geo_dict['crys_roll']["mean"]
-        crys_roll_std = geo_dict['crys_roll']["std"]
-
-        cam_pitch_mean = geo_dict['cam_pitch']["mean"]
-        cam_pitch_std = geo_dict['cam_pitch']["std"]
-
-        cam_roll_mean = geo_dict["cam_roll"]["mean"]
-        cam_roll_std = geo_dict["cam_roll"]["std"]
-
-        r_cam_mean = geo_dict['r_cam']['mean']
-        r_cam_std = geo_dict['r_cam']['std']
+        crys_pitch, crys_roll, cam_pitch, cam_roll, r_cam = access_saved_geometric(index_of_interest)
 
         energyBins = np.arange(1100, 1600 + bin_width, bin_width)
 
-        geo_engine = Geometry(crystal_pitch=crys_pitch_mean, crystal_roll=crys_roll_mean,
-                              camera_pitch=cam_pitch_mean, camera_roll=cam_roll_mean,
-                              r_cam=r_cam_mean, )
+        geo_engine = Geometry(crystal_pitch=crys_pitch, crystal_roll=crys_roll,
+                              camera_pitch=cam_pitch, camera_roll=cam_roll,
+                              r_cam=r_cam, )
 
         mat_lines = np.zeros((length_detector_pixels, length_detector_pixels))
         # intialising the colours of the lines to better visibility
@@ -1161,20 +1223,29 @@ if __name__ == '__main__':
         plt.show()
 
 
-    # plotMatrixWithEnergyOfPixel(True)
+    def calibrate_quadratics(list_indices=list_data):
 
-    # visualiseQuadParams(list_data)
-
-    def checkSolidAngleLogic(N=5):
-        xMin = 1
-        xMax = 2
-        dX = (xMax - xMin) / N
-
-        x_vals = np.linspace(xMin + dX / 2, xMax - dX / 2, N)
-
-        print(x_vals)
+        print("calibrate_quadratics")
+        for indexOI in list_indices:
+            calibrate_and_save_quadratics(indexOI,
+                                          howManySigma=2, adjacent_pixel_weighting=0.5, pixelwidth_lineintegral_5=True,
+                                          bBounds=(700, 950),
+                                          folderpath="stored_variables", saveData=True,
+                                          plot_Results=True,
+                                          )
 
 
-    checkSolidAngleLogic()
+    def calibrate_geometric(list_indices=list_data):
+
+        print("calibrate_geometric")
+        for indexOI in list_indices:
+            geometry_fitMinimise(indexOI, useSavedVals=True, )
+
+
+    calibrate_geometric([1])
+    testPlotGeometryLines(1)
+
+    # testPlotQuadLines(1,plot_gauss=False)
+
 
     pass

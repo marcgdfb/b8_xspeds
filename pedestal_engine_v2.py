@@ -183,6 +183,19 @@ class Pedestal:
             plt.show()
 
 
+def pedestal_mean_sigma_awayFromLines(imMatrix, indexOfInterest):
+    # The i starting index is to avoid the edge effects at the top which is prominent
+    iIndexStart, iIndexEnd, jIndexStart, jIndexEnd = 500, 1750, 50, 1150
+    matrixOfInterest = imMatrix[iIndexStart:iIndexEnd, jIndexStart:jIndexEnd]
+    titleH = f"Image {indexOfInterest} Gaussian Fit for i∊[{iIndexStart},{iIndexEnd}] and j∊[{jIndexStart},{jIndexEnd}] "
+    ped8_indexed = Pedestal(matrixOfInterest, titleH, bins=300, pedestalOffset_adu=20, )
+    gaussFitDict_ = ped8_indexed.findGaussian(logarithmic=True)
+
+    meanPedestal = gaussFitDict_["mean"][0]  # + gaussFitDict["mean"][1]
+    sigmaPedestal = gaussFitDict_["sigma"][0]  # + gaussFitDict["sigma"][1]
+
+    return meanPedestal, sigmaPedestal
+
 if __name__ == "__main__":
 
     def check_spcUsage(indexOfInterest):

@@ -105,7 +105,7 @@ class TestImages:
 
     @staticmethod
     def image_8_post_kernels():
-        im8_postk = np.load(r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\image_8\test3_final.npy")
+        im8_postk = np.load(r"old_logs_and_stored_variables/v1/data_logs\image_matrices\image_8\test3_final.npy")
         return im8_postk
 
 
