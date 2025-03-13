@@ -1,4 +1,4 @@
-from calibrate_geometry_v3 import *
+from calibrate_geometry_v4 import *
 from spc_engine_v4 import *
 import time
 
@@ -17,7 +17,8 @@ class Spectrum:
                  sp_adu_thr=180, dp_adu_thr=240, noPhoton_adu_thr=50,
                  tp_adu_thr=400, quad_p_adu_thr=550, quint_p_adu_thr=700,
                  removeTopRows=0,
-                 how_many_sigma=0):
+                 how_many_sigma=0,
+                 folderpath="stored_variables"):
 
         def printVar():
             print("-" * 30)
@@ -213,7 +214,7 @@ def dict_ij_perEnergyBin(band_width=1):
     print("Creating dictionary of ij coordinates in each bin")
 
     energy_of_pixelMat = np.load(
-        r"/old_logs_and_stored_variables/v2/energy_of_pixel.npy")
+        r"../old_logs_and_stored_variables/v2/energy_of_pixel.npy")
 
     energyBands = np.arange(1000, 1700 + band_width, band_width)
 
@@ -239,7 +240,7 @@ def dict_ij_perEnergyBin(band_width=1):
     return dict_bin_indices
 
 
-def determine_solidAnglePerEnergyBin(band_width=1, numberOfPoints=3, plotdistribtion=False, saveToExcel=False):
+def determine_solidAnglePerEnergyBin(band_width=1, numberOfPoints=1, plotdistribtion=False, saveToExcel=False):
     dict_ij_perBin = dict_ij_perEnergyBin(band_width=band_width)
 
     print("-" * 30)
@@ -298,7 +299,7 @@ def determine_solidAnglePerEnergyBin(band_width=1, numberOfPoints=3, plotdistrib
         df["Upper Bound"] = l_ub
         df["Solid Angle"] = l_solidAngle
 
-        excl_filename = r"/old_logs_and_stored_variables/v2/solidAngle.xlsx"
+        excl_filename = r"../old_logs_and_stored_variables/v2/solidAngle.xlsx"
 
         df.to_excel(excl_filename, index=False)
 
@@ -316,21 +317,22 @@ def averageAllImages(intensity_arb_unit=False, band_width=1,
     thr_quadp = 550
     thr_quintp = 700
 
-    geo_engine = geo_engine_withSavedParams(True)
-
-    cryPitch = geo_engine.crystal_pitch
-    CryRoll = geo_engine.crystal_roll
-    Cam_Pitch = geo_engine.camera_pitch
-    Cam_Roll = geo_engine.camera_roll
-    r_cam = geo_engine.r_cam
-    theta_cam = 2.567
 
     energy_lists_dict = {}
+    theta_cam = 2.567
 
     for im_number in range(len(loadData())):
 
         if im_number in [0, 3, 5, 9, 10, 12, 13, 15, 18]:
             continue
+
+        geo_engine = geo_engine_withSavedParams(im_number)
+
+        cryPitch = geo_engine.crystal_pitch
+        CryRoll = geo_engine.crystal_roll
+        Cam_Pitch = geo_engine.camera_pitch
+        Cam_Roll = geo_engine.camera_roll
+        r_cam = geo_engine.r_cam
 
         # assume initially that all have the same crystal orientation:
 
@@ -357,7 +359,7 @@ def averageAllImages(intensity_arb_unit=False, band_width=1,
     thresholds_title2 = f'\nTP < {thr_tp},QuadP < {thr_quadp},QuintP < {thr_quintp}'
     spectrumTitle = f"Total Photon Energy Spectrum with Multi Photon Hits Version 2" + howManySigmaTitle + thresholds_title1 + thresholds_title2
 
-    Spectrum(0, cryPitch, CryRoll, Cam_Pitch, Cam_Roll, np.array([r_cam, theta_cam, np.pi])).plotSpectrum(
+    Spectrum(0, 0, 0, 0, 0, np.array([0, 2.567, np.pi])).plotSpectrum(
         energyList_total, band_width=band_width,
         spectrumTitle=spectrumTitle,
         intensity_arb_unit=intensity_arb_unit)

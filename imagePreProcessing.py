@@ -352,7 +352,7 @@ if __name__ == '__main__':
         plt.show()
 
 
-    plotRawMatThresholdedMat(1)
+    # plotRawMatThresholdedMat(1)
 
     def plotThreeDeviations(indexOfInterest=8,zoomArea=(500,1000,500,1000)):
 

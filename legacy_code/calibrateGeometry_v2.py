@@ -11,7 +11,6 @@ import cma
 geometryLog = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\geometryFitLog.txt"
 quadLineLog = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\quadraticLineFits.txt"
 
-# TODO: find and log uncertainty in values the C value for fitting
 
 
 class Geometry:

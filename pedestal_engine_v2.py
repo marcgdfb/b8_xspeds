@@ -196,6 +196,20 @@ def pedestal_mean_sigma_awayFromLines(imMatrix, indexOfInterest):
 
     return meanPedestal, sigmaPedestal
 
+
+def mat_thr_aboveNsigma(index_of_interest, how_many_sigma, ):
+    image_mat = loadData()[index_of_interest]
+    # ----------pedestal mean and sigma----------
+    ped_mean, ped_sigma = pedestal_mean_sigma_awayFromLines(image_mat, index_of_interest)
+    thr = ped_mean + how_many_sigma * ped_sigma
+
+    image_mat = np.where(image_mat > thr, image_mat, 0)
+
+    return image_mat, thr
+
+
+
+
 if __name__ == "__main__":
 
     def check_spcUsage(indexOfInterest):
@@ -209,7 +223,11 @@ if __name__ == "__main__":
         ped8_indexed = Pedestal(matrixOfInterest, titleH, bins=300, pedestalOffset_adu=25, )
         ped8_indexed.findGaussian(plotGaussOverHist=True, logarithmic=True,diagnostics=False)
 
-    check_spcUsage(8)
+    # check_spcUsage(8)
+
+    image_mat11, thr2sigma11 = mat_thr_aboveNsigma(11,2)
+    plt.imshow(image_mat11,cmap='hot')
+    plt.show()
 
     pass
 

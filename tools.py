@@ -353,6 +353,11 @@ class Append_to_file:
         with open(self.file_path, "a", encoding="utf-8") as file:
             file.write("\n" + text)
 
+    def append_and_print(self,text):
+        with open(self.file_path, "a", encoding="utf-8") as file:
+            file.write("\n" + text)
+        print(text)
+
 
 def sorted_keys_by_value(dictionary):
     """

@@ -14,8 +14,6 @@ geometryLog = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xs
 quadLineLog = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\quadraticLineFits.txt"
 
 
-# TODO: find and log uncertainty in values the C value for fitting
-
 
 class Geometry:
     def __init__(self, crystal_pitch, crystal_roll, camera_pitch, camera_roll,
@@ -668,6 +666,13 @@ def calibrate_and_save_quadratics(indexOfInterest,
     LinesMatLeft = np.where(leftLineMat > 0, thr, 0)
     LinesMatRight = np.where(rightLineMat > 0, thr, 0)
 
+
+    if saveData:
+        filepath = os.path.join(index_folder, "quadratic_fits.npy")
+        quad_vars = np.array(left_vars + right_vars)
+        np.save(filepath, quad_vars)
+
+
     if plot_Results:
         plt.figure(figsize=(10, 5))
         plt.subplot(1, 2, 1), plt.imshow(image_mat, cmap='hot'), plt.title(
@@ -675,11 +680,6 @@ def calibrate_and_save_quadratics(indexOfInterest,
         plt.subplot(1, 2, 2), plt.imshow(imMatVeryClear + LinesMatLeft + LinesMatRight, cmap='hot'), plt.title(
             f"Average Pooled Image with geometric lines")
         plt.show()
-
-    if saveData:
-        filepath = os.path.join(index_folder, "quadratic_fits.npy")
-        quad_vars = np.array(left_vars + right_vars)
-        np.save(filepath, quad_vars)
 
 
 def access_saved_quadratics(indexOfInterest, folderpath="stored_variables"):
@@ -1129,7 +1129,6 @@ def visualiseGeometryFitParams(list_indexOI):
     plt.show()
 
 
-# TODO: change usage of the following to use indexOfInterest. Want to fit for each image individually to account for x-ray jitter
 
 def geo_engine_withSavedParams(index_oI, printVals=False):
     crys_pitch, crys_roll, cam_pitch, cam_roll, r_cam = access_saved_geometric(index_oI)
@@ -1211,7 +1210,7 @@ if __name__ == '__main__':
                 mat_Energy[i, j] = energy_of_pixel
 
         if savefile:
-            folder_path_to_save = r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\stored_variables"
+            folder_path_to_save = r"/stored_variables"
             filename = "energy_of_pixel"
             np.save(f"{folder_path_to_save}/{filename}.npy", mat_Energy)
 
@@ -1242,8 +1241,10 @@ if __name__ == '__main__':
             geometry_fitMinimise(indexOI, useSavedVals=True, )
 
 
-    calibrate_geometric([1])
-    testPlotGeometryLines(1)
+    calibrate_quadratics()
+
+    # calibrate_geometric()
+    # testPlotGeometryLines(1)
 
     # testPlotQuadLines(1,plot_gauss=False)
 

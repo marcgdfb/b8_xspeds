@@ -17,8 +17,12 @@ The general structure is as follows:
 For photos and notes made in the process of making this see https://miro.com/welcomeonboard/QUM2cCtDaDhjRmtNQmw0dXVzSkFZNm5XYUZRcEh6WVkrbDRnMVN3VkN3eTVtZmUrSTZSQ2k3M1EzNFVYZ2djdDg0WEtjVlpPNnE5aWJ2OTczaUtWUFBDL3J6NTl6NFpXaXY2SG1nTndrK29BK0NLTWVmT1JOelJvOGdmcENYTVl0R2lncW1vRmFBVnlLcVJzTmdFdlNRPT0hdjE=?share_link_id=640928823258
 
 Important Human Inputs:
-- The bounds of the c values for each curve
+- The bounds of the parameters of the ellipse are quite important 
+due to the noise of the image. Although the geometric fitting is relatively
+robust to error here, I recommend using the quadratic fit to get a quick curve
+and then using desmos to fine tune the bounds on the ellipse https://www.desmos.com/calculator/xa8ud5juop
 
 Run Times:
-- calibrate_and_save_quadratics ~ 
+- fit_ellipse ~    Per image
+- fit_geometry_to_ellipse ~    Per image
 - Solid Angle per Bin using bin_width=1,numberOfPoints=3 is ~ 12 minutes
