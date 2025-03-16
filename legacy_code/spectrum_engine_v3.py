@@ -3,13 +3,6 @@ from spc_engine_v4 import *
 import time
 
 
-# TODO: Make it clear in documentation that the mean is subtracted from the result. Do this in readme?
-
-# TODO: Make sure that each image uses the fitted curves specific to that curve to correct for xray jitter
-
-# TODO: Consider poisson error in this ~ sqrt(N)
-
-
 class Spectrum:
     def __init__(self, indexOfInterest,
                  crystal_pitch, crystal_roll, camera_pitch, camera_roll,

@@ -12,7 +12,7 @@ class Excel:
             self.df = pd.read_excel(self.file_path)
 
 
-def abc_excel_append(list_data_indices=list_data,folderpath="stored_variables"):
+def ellipse_excel_append(list_data_indices=list_data,folderpath="stored_variables"):
     excel_filename = "ellipse_params.xlsx"
     excel_filename_temp = "ellipse_params_temp.xlsx"
     excl_filepath = os.path.join(folderpath, excel_filename)
@@ -128,9 +128,22 @@ def compare_energy_matrices(index1,index2,folderpath="stored_variables"):
     plt.colorbar(label="Energy Difference (eV)")
     plt.show()
 
+def plot_solidAngle(indexOI,folderpath="stored_variables"):
+    index_folder = os.path.join(folderpath, str(indexOI))
+    solidA_filepath = os.path.join(index_folder, "solid_angle_of_pixel.npy")
 
-compare_energy_matrices(7,8)
+    mat_SA = np.load(solidA_filepath)
+
+    plt.imshow(mat_SA, cmap='gray')
+    plt.title(f"solid angle for image {indexOI}")
+    plt.colorbar(label="Solid Angle")
+    plt.show()
+
+
+plot_solidAngle(8)
+
+# compare_energy_matrices(7,8)
 
 # geometric_excel_append()
-# abc_excel_append()
+# ellipse_excel_append()
 

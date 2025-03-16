@@ -18,7 +18,7 @@ class Spectrum:
                  sp_adu_thr=160, dp_adu_thr=250, noPhoton_adu_thr=80,
                  tp_adu_thr=400, quad_p_adu_thr=550, quint_p_adu_thr=700,
                  removeTopRows=0,
-                 how_many_sigma=0,
+                 how_many_sigma=2,
                  folderpath="stored_variables"):
 
         if geo_engine is None:
@@ -222,18 +222,18 @@ class Spectrum:
         return energyList
 
 
+
+
     def islandSpectrum_SolidAngle_with_uncertainty(self,bin_width=1,save=False):
         energyList_islands, _ = self.multiPixel_island(bin_wdith=bin_width, plotSpectrum=False)
 
         energyBins = np.arange(1000, 1700 + bin_width, bin_width)
         photonEnergies = np.array(energyList_islands)
         count, bin_edges = np.histogram(photonEnergies, energyBins)
-        # Convert np.histogram edges into bin tuples
-        count_bins = [f"({int(bin_edges[i])}, {int(bin_edges[i + 1])})" for i in range(len(bin_edges) - 1)]
-        # Create a DataFrame for counts
-        counts_df = pd.DataFrame({'bins': count_bins, 'counts': count})
-        counts_df["count_uncertainty"] = np.sqrt(counts_df["counts"])
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
+        print(f"count: length = {len(count)}")
+        print(f"bin_centers: length = {len(bin_centers)}")
 
         index_folder = os.path.join(self.folderpath, str(self.indexOfInterest))
         solidAng_filepath = os.path.join(index_folder, f"solid_angle_of_binwidth_{bin_width}.xlsx")
@@ -244,38 +244,100 @@ class Spectrum:
             df_solid_angle = pd.DataFrame(solid_angle_per_energy_bin(index_of_interest=self.indexOfInterest, bin_width=bin_width))
 
         df_solid_angle = df_solid_angle[['bins','solid_angle']]
-        merged_df = pd.merge(counts_df, df_solid_angle, on='bins', how='left')
-        merged_df["normalised_counts"] = merged_df["counts"] / merged_df["solid_angle"]
-        merged_df["normalised_count_uncertainty"] = merged_df["count_uncertainty"] / merged_df["solid_angle"]
-        merged_df = merged_df[merged_df['counts'] != 0]
+
+        # Convert string representations of tuples to actual tuples
+        df_solid_angle["bins"] = df_solid_angle["bins"].apply(ast.literal_eval)
+
+        solidAngle_bins_tuple = df_solid_angle['bins'].values
+        solid_angle_vals = df_solid_angle['solid_angle'].values
+
+        solidAngle_bins_center_dict = {}
+        for tuple_sa,solid_angle_val in zip(solidAngle_bins_tuple,solid_angle_vals):
+            center_val = (tuple_sa[0] + tuple_sa[1])/2
+            solidAngle_bins_center_dict[center_val] = solid_angle_val
+
+        solid_angle_normalised_counts = []
+        solid_angle_normalised_uncertainty = []
+        count_uncertainty = []
+        for count, count_center in zip(count,bin_centers):
+            if count == 0:
+                solid_angle_normalised_counts.append(0)
+                count_uncertainty.append(0)
+                solid_angle_normalised_uncertainty.append(0)
+                continue
+
+            # Solid Angle normalisation of count
+            normalised_count = count / solidAngle_bins_center_dict[count_center]
+            solid_angle_normalised_counts.append(normalised_count)
+
+            # Poisson Uncertainty
+            uncertainty = np.sqrt(count)
+            count_uncertainty.append(uncertainty)
+            # Solid Angle Normalisation of uncertainty
+            normalised_uncertainty = uncertainty / solidAngle_bins_center_dict[count_center]
+            solid_angle_normalised_uncertainty.append(normalised_uncertainty)
+
+
+        normalised_counts = np.array(solid_angle_normalised_counts)
+        normalised_count_unc = np.array(solid_angle_normalised_uncertainty)
+
+        count_unc = np.array(count_uncertainty)
 
         if save:
-            excelFilepath = os.path.join(index_folder, f"spectrum_data_binwidth_{bin_width}.xlsx")
-            merged_df.to_excel(excelFilepath, index=False)
+            count_filepath = os.path.join(index_folder, "count.npy")
+            np.save(count_filepath, count)
 
-    def plotSpectrumDf(self,bin_width=1,intensity_arb_unit=False,logarithmic=False):
-        index_folder = os.path.join(self.folderpath, str(self.indexOfInterest))
-        excelFilepath = os.path.join(index_folder, f"spectrum_data_binwidth_{bin_width}.xlsx")
-        df_spectrum = pd.read_excel(excelFilepath)
+            count_unc_filepath = os.path.join(index_folder, "count_unc.npy")
+            np.save(count_unc_filepath, count_unc)
 
-        oldCount = np.array(df_spectrum["normalised_counts"].values)
+            normalised_counts_filepath = os.path.join(index_folder, "solidAng_normalised_counts.npy")
+            np.save(normalised_counts_filepath, normalised_counts)
 
-        df_spectrum["bins"] = df_spectrum["bins"].apply(ast.literal_eval)
-        binTuples = df_spectrum["bins"].values
-        bin_centers = np.array([(start + end) / 2 for start, end in binTuples])
+            normalised_counts_unc_filepath = os.path.join(index_folder, "solidAng_normalised_counts_unc.npy")
+            np.save(normalised_counts_unc_filepath, normalised_counts)
 
+            bin_center_filepath = os.path.join(index_folder, "bin_centers.npy")
+            np.save(bin_center_filepath, bin_centers)
+
+        return count, count_unc,normalised_counts, normalised_count_unc,bin_centers
+
+    def plotSpectrum_solid_angle(self,bin_width=1,intensity_arb_unit=False,logarithmic=False,plotUnc=True):
+        count, count_unc,normalised_counts, normalised_count_unc,bin_centers = self.islandSpectrum_SolidAngle_with_uncertainty(bin_width=bin_width)
 
         plt.figure(figsize=(10, 6))
         if intensity_arb_unit:
             countIntensity = []
-            for countE, center in zip(oldCount, bin_centers):
-                countIntensity.append(countE * center)
+            countIntensity_lb = []
+            countIntensity_ub = []
+            for countE, count_unc,center in zip(normalised_counts,normalised_count_unc, bin_centers):
+
+                intensity_ = countE * center
+                intensity_uncertainty = count_unc * center
+
+                countIntensity.append(intensity_)
+                countIntensity_lb.append(intensity_ - intensity_uncertainty)
+                countIntensity_ub.append(intensity_ + intensity_uncertainty)
+
             countIntensity = np.array(countIntensity)
+            countIntensity_ub = np.array(countIntensity_ub)
+            countIntensity_lb = np.array(countIntensity_lb)
+
+            if plotUnc:
+                plt.plot(bin_centers, countIntensity_lb, linestyle='-', color='r')
+                plt.plot(bin_centers, countIntensity_ub, linestyle='-', color='r')
+
             plt.plot(bin_centers, countIntensity, linestyle='-', color='b')
             plt.ylabel('Intensity (arb. unit)')
 
         else:
-            plt.plot(bin_centers, oldCount, linestyle='-', color='b')
+            if plotUnc:
+                count_ub = normalised_counts + normalised_count_unc
+                count_lb = normalised_counts - normalised_count_unc
+
+                plt.plot(bin_centers, count_lb, linestyle='-', color='r')
+                plt.plot(bin_centers, count_ub, linestyle='-', color='r')
+
+            plt.plot(bin_centers, normalised_counts, linestyle='-', color='b')
             plt.ylabel('Count')
         plt.xlabel('Energy')
         plt.title("")
@@ -285,6 +347,49 @@ class Spectrum:
         plt.show()
 
 
+    @staticmethod
+    def plotSpectrum_count_unc_binCenters(count_array,unc_array,bin_center_array,intensity_arb_unit=False,logarithmic=False,plotUnc=True):
+
+        count_lb = count_array - unc_array
+        count_ub = count_array + unc_array
+
+        plt.figure(figsize=(10, 6))
+        if intensity_arb_unit:
+            countIntensity = []
+            countIntensity_lb = []
+            countIntensity_ub = []
+            for COUNT, COUNT_LB, COUNT_UB, center in zip(count_array,count_lb, count_ub, bin_center_array):
+                countIntensity.append(COUNT * center)
+                countIntensity_lb.append(COUNT_LB * center)
+                countIntensity_ub.append(COUNT_UB * center)
+
+            countIntensity = np.array(countIntensity)
+            countIntensity_ub = np.array(countIntensity_ub)
+            countIntensity_lb = np.array(countIntensity_lb)
+
+            if plotUnc:
+                plt.plot(bin_center_array, countIntensity_lb, linestyle='-', color='r')
+                plt.plot(bin_center_array, countIntensity_ub, linestyle='-', color='r')
+
+            plt.plot(bin_center_array, countIntensity, linestyle='-', color='b')
+            plt.ylabel('Intensity (arb. unit)')
+
+        else:
+            if plotUnc:
+                plt.plot(bin_center_array, count_lb, linestyle='-', color='r')
+                plt.plot(bin_center_array, count_ub, linestyle='-', color='r')
+
+            plt.plot(bin_center_array, count_array, linestyle='-', color='b')
+            plt.ylabel('Count')
+        plt.xlabel('Energy')
+        plt.title("")
+        if logarithmic:
+            plt.yscale('log')
+        plt.grid(True)
+        plt.show()
+
+
+# TODO: make a graph with both solid angle corrected and non solid angle corrected!
 
 
 
@@ -372,6 +477,62 @@ def solid_angle_per_energy_bin(index_of_interest, bin_width=1, folderpath="store
 
     return solid_angle_df
 
+def collect_count_unc(bin_width=1, folderpath="stored_variables",save=True):
+
+    energyBins = np.arange(1000, 1700 + bin_width, bin_width)
+    bin_centers = (energyBins[:-1] + energyBins[1:]) / 2
+
+    dict_counts = {}
+
+    for center in bin_centers:
+        dict_counts[center] = {"count": 0,
+                               "count_unc": 0}
+
+    try:
+        list_folderpath = [os.path.join(folderpath, name) for name in os.listdir(folderpath)]
+
+        for folder_path_ in list_folderpath:
+            print(folder_path_)
+            if os.path.exists(os.path.join(folderpath, "solidAng_normalised_counts.npy")):
+
+                counts = np.load(os.path.join(folderpath, "solidAng_normalised_counts.npy"))
+                unc_counts = np.load(os.path.join(folderpath, "solidAng_normalised_counts_unc.npy"))
+                bin_centers_ = np.load(os.path.join(folderpath, "bin_centers.npy"))
+
+                for count_,unc_,center_ in zip(counts,unc_counts,bin_centers_):
+
+                    dict_center_ = dict_counts[center_]
+                    dict_center_["count"] += count_
+                    dict_center_["count_unc"] += unc_
+
+            else:
+                print("Count Files not saved ")
+
+        count_list = []
+        count_unc_list = []
+        for bin_center in bin_centers:
+            count_list.append(dict_counts[bin_center]["count"])
+            count_unc_list.append(dict_counts[bin_center]["count_unc"])
+
+        count_array = np.array(count_list)
+        count_unc_array = np.array(count_unc_list)
+
+        if save:
+            filename_count = os.path.join(folderpath, "solidAng_normalised_counts_total.npy")
+            filename_unc = os.path.join(folderpath,"solidAng_normalised_counts_unc_tot.npy")
+            filename_bins = os.path.join(folderpath, "solidAng_normalised_counts_bins.npy")
+
+            np.save(filename_count, count_array)
+            np.save(filename_unc, count_unc_array)
+            np.save(filename_bins, bin_centers)
+
+
+    except FileNotFoundError as e:
+        print(f"FileNotFoundError: {e}")
+
+
+
+
 def averageAllImages(intensity_arb_unit=False, bin_wdith=1,
                      howManySigma=2,folderpath="stored_variables"):
 
@@ -434,6 +595,9 @@ def averageAllImages(intensity_arb_unit=False, bin_wdith=1,
         intensity_arb_unit=intensity_arb_unit)
 
 
+# TODO: save Bin center, count , count_unc
+
+
 if __name__ == "__main__":
     def check_spec(indexOI):
         spectrum = Spectrum(indexOI, removeTopRows=0,
@@ -461,10 +625,15 @@ if __name__ == "__main__":
 
 
     def solidAngle(indexOI=11):
-        spectrum_eng = Spectrum(indexOfInterest=indexOI, folderpath="stored_variables")
-        spectrum_eng.islandSpectrum_SolidAngle_with_uncertainty(bin_width=1, save=True)
-        spectrum_eng.plotSpectrumDf(bin_width=1)
+        spectrum_eng = Spectrum(indexOfInterest=indexOI, folderpath="stored_variables",how_many_sigma=2,)
+        # spectrum_eng.islandSpectrum_SolidAngle_with_uncertainty(bin_width=1, save=True)
+        spectrum_eng.plotSpectrum_solid_angle(bin_width=1,intensity_arb_unit=True,)
 
-    solidAngle(11)
+    solidAngle(8)
+
+
+    # solid_angle_per_energy_bin(8,1,plotDistribtion=True,save=False)
+
+
 
     pass

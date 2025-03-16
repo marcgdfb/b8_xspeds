@@ -797,11 +797,7 @@ class SolidAngle:
 
         return self.integrate_d_omega(xMin, xMax, yMin, yMax, number_points=number_points)
 
-
-# ---------- Calibration and saving of parameters ----------
-
-
-# ---------- Quadratic:
+# ---------- Calibration and saving of Quadratic Parameters:
 
 def calibrate_and_save_quadratics(indexOfInterest,
                                   howManySigma=2, adjacent_pixel_weighting=0.5, pixelwidth_lineintegral_5=True,
@@ -870,54 +866,13 @@ def access_saved_quadratics(indexOfInterest, folderpath="stored_variables"):
     saved_variables = np.load(filepath)
 
     left_vars = saved_variables[0:4]
-    print(left_vars)
+    print("left line variables: ", left_vars)
     right_vars = saved_variables[4:8]
-    print(right_vars)
+    print("right line variables: ", right_vars)
 
     return left_vars, right_vars
 
-
-def testPlotQuadLines(indexOfInterest, how_many_sigma=2, plot_gauss=True, ):
-    left_vars, right_vars = access_saved_quadratics(indexOfInterest)
-    Aleft = left_vars[0]
-    Bleft = left_vars[1]
-    Cleft = left_vars[2]
-
-    Aright = right_vars[0]
-    Bright = right_vars[1]
-    Cright = right_vars[2]
-
-    print(indexOfInterest)
-    image_mat, thr = mat_thr_aboveNsigma(indexOfInterest, how_many_sigma)
-    mat_plot = image_mat
-
-    calibrate_tpql = Quadratic_Fit(image_mat, None, adjacentWeight=0.5, width_lineIntegral_5=True)
-    if plot_gauss:
-        calibrate_tpql.fitGaussianToLineIntegral(a=Aleft, b=Bleft, cBounds=(Cleft - 60, Cleft + 60),
-                                                 plotGauss=True)
-        calibrate_tpql.fitGaussianToLineIntegral(a=Aright, b=Bright, cBounds=(Cright - 60, Cright + 60),
-                                                 plotGauss=True, )
-
-    mat_quadLeft = calibrate_tpql.matrixWithLines(Aoptimised=Aleft, Boptimised=Bleft,
-                                                  Coptimised=Cleft, plotLines=False)
-    mat_quadRight = calibrate_tpql.matrixWithLines(Aoptimised=Aright, Boptimised=Bright,
-                                                   Coptimised=Cright, plotLines=False, )
-
-    val_line = np.max(mat_plot) / 4
-
-    mat_quadLeft = np.where(mat_quadLeft > 0, val_line, 0)
-    mat_quadRight = np.where(mat_quadRight > 0, val_line, 0)
-
-    # plt.imshow(mat_plot + mat_quadLeft + mat_quadRight, cmap="hot")
-    plt.imshow(mat_quadLeft + mat_quadRight, cmap="hot")
-    titleL1 = f"Image {indexOfInterest} with saved A(y-B)**2 + C coefficients"
-    titleL2 = f"\nLeft: A={Aleft:.2f}, B={Bleft:.2f}, C={Cleft:.2f}"
-    titleL3 = f"\nRight: A={Aright:.2f}, B={Bright:.2f}, C={Cright:.2f}"
-    plt.title(titleL1 + titleL2 + titleL3)
-    plt.show()
-
-
-# ---------- Ellipse:
+# ---------- Calibration and saving of Ellipse Parameters:
 
 def fit_ellipse(indexOfInterest, left_bounds=None, right_bounds=None,
                 howManySigma=2, adjacent_pixel_weighting=0.5, pixelwidth_lineintegral_5=True,
@@ -1015,41 +970,8 @@ def access_saved_ellipse(indexOfInterest, folderpath="stored_variables"):
     return left_vars, right_vars, left_c_unc, right_c_unc
 
 
-def testPlot_ellipse_lines(indexOfInterest, how_many_sigma=2, plot_gauss=True, ):
-    left_vars_y0ABc, right_vars_y0ABc, left_c_unc, right_c_unc = access_saved_ellipse(indexOfInterest)
 
-    print(indexOfInterest)
-    image_mat, thr = mat_thr_aboveNsigma(indexOfInterest, how_many_sigma)
-    mat_plot = image_mat
-
-    cal_ellipse = Ellipse_Fit(image_mat, None, adjacentWeight=0.5,
-                              extra_lineIntegral_width=True)
-    if plot_gauss:
-        params_Y0_A_B_left = left_vars_y0ABc[:-1]
-        c_left = left_vars_y0ABc[-1]
-        params_Y0_A_B_right = right_vars_y0ABc[:-1]
-        c_right = right_vars_y0ABc[-1]
-
-        cal_ellipse.fitGaussian(params_Y0_A_B=params_Y0_A_B_left, c_Bounds=(c_left - 60, c_left + 60))
-        cal_ellipse.fitGaussian(params_Y0_A_B=params_Y0_A_B_right, c_Bounds=(c_right - 60, c_right + 60))
-
-    val_line = np.max(mat_plot) / 4
-
-    mat_left = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=left_vars_y0ABc,
-                                                     value_of_line_points=val_line)
-    mat_right = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=right_vars_y0ABc,
-                                                      value_of_line_points=val_line)
-
-    plt.imshow(mat_plot + mat_left + mat_right, cmap="hot")
-    # plt.imshow(mat_left + mat_right, cmap="hot")
-    titleL1 = f"Image {indexOfInterest} with saved x = c_ + A - A*np.sqrt(1 - (Y-Y0)**2 / B**2) coefficients"
-    titleL2 = f"\nLeft: c={left_vars_y0ABc[-1]:.2f}, A={left_vars_y0ABc[1]:.2f}, y0={left_vars_y0ABc[0]:.2f}, B={left_vars_y0ABc[2]}"
-    titleL3 = f"\nRight: c={right_vars_y0ABc[-1]:.2f}, A={right_vars_y0ABc[1]:.2f}, y0={right_vars_y0ABc[0]:.2f}, B={right_vars_y0ABc[2]}"
-    plt.title(titleL1 + titleL2 + titleL3)
-    plt.show()
-
-
-# ---------- Geometric:
+# ---------- Calibration and saving of Geometric Parameters:
 
 
 def fit_geometry_to_ellipse(indexOfInterest,
@@ -1057,7 +979,7 @@ def fit_geometry_to_ellipse(indexOfInterest,
                             folderpath="stored_variables", saveData=True,
                             how_many_sigma=2,
                             weight_ofsettedPoints=0.5, iterations=30, plot=False,
-                            lossMethodNew=True, ):
+                            lossMethodNew=True, useQuadratic=False):
     if initialGuess is None:
         initialGuess = np.array([-0.3445,  # crystal pitch
                                  0.0184,  # crystal roll
@@ -1077,7 +999,11 @@ def fit_geometry_to_ellipse(indexOfInterest,
     index_folder = os.path.join(folderpath, str(indexOfInterest))
     if not os.path.exists(index_folder):
         os.makedirs(index_folder)
-    logTextFile = os.path.join(index_folder, "geometric_fits_log.txt")
+
+    if useQuadratic:
+        logTextFile = os.path.join(index_folder, "geometric_fits_usingQuad_log.txt")
+    else:
+        logTextFile = os.path.join(index_folder, "geometric_fits_log.txt")
 
     def logStart():
         log_ = Append_to_file(logTextFile)
@@ -1093,6 +1019,7 @@ def fit_geometry_to_ellipse(indexOfInterest,
         log_.append(f"iterations = {iterations}")
         log_.append(f"New loss method: {lossMethodNew}")
 
+
     logStart()
 
     print(indexOfInterest)
@@ -1105,15 +1032,21 @@ def fit_geometry_to_ellipse(indexOfInterest,
     image_mat = np.where(image_mat > thr, image_mat, 0)
     # imMatVeryClear = imVeryClear(image_mat, 0, (21, 5))
 
-    cal_ellipse = Ellipse_Fit(image_mat, None, adjacentWeight=0.5, extra_lineIntegral_width=True)
 
-    left_vars_y0ABc, right_vars_y0ABc, left_c_unc, right_c_unc = access_saved_ellipse(indexOfInterest, folderpath)
 
-    print("Using Saved Values")
-    print("Left Line:")
+    if useQuadratic:
+        cal_quadratic = Quadratic_Fit(image_mat,None,adjacentWeight=0.5,width_lineIntegral_5=True)
+        leftvars, rightvars = access_saved_quadratics(indexOfInterest,folderpath)
+        linesMatLeft = cal_quadratic.matrixWithLines(Aoptimised=leftvars[0], Boptimised=leftvars[1],
+                                                     Coptimised=leftvars[2], plotLines=False)
+        linesMatRight = cal_quadratic.matrixWithLines(Aoptimised=rightvars[0], Boptimised=rightvars[1],
+                                                     Coptimised=rightvars[2], plotLines=False)
 
-    linesMatLeft = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=left_vars_y0ABc)
-    linesMatRight = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=right_vars_y0ABc, )
+    else:
+        cal_ellipse = Ellipse_Fit(image_mat, None, adjacentWeight=0.5, extra_lineIntegral_width=True)
+        left_vars_y0ABc, right_vars_y0ABc, left_c_unc, right_c_unc = access_saved_ellipse(indexOfInterest, folderpath)
+        linesMatLeft = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=left_vars_y0ABc)
+        linesMatRight = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=right_vars_y0ABc, )
 
     def lossFunction(params):
         p = params
@@ -1240,7 +1173,11 @@ def fit_geometry_to_ellipse(indexOfInterest,
         logResults()
 
     if saveData:
-        filepath = os.path.join(index_folder, "geometric_fits.npy")
+        if useQuadratic:
+            filepath = os.path.join(index_folder, "geometric_fits_usingQuad.npy")
+        else:
+            filepath = os.path.join(index_folder, "geometric_fits.npy")
+
         geometric_vars = np.array(optimisedParams)
         np.save(filepath, geometric_vars)
 
@@ -1267,140 +1204,6 @@ def access_saved_geometric(indexOfInterest, folderpath="stored_variables"):
     r_cam = saved_variables[4]
 
     return crys_pitch, crys_roll, cam_pitch, cam_roll, r_cam
-
-
-def testPlotGeometryLines(indexOfInterest, how_many_sigma=2, r_theta=2.567,
-                          testVars=None, plotEllipse_vs_geometric=False):
-    print(indexOfInterest)
-
-    image_mat, thr = mat_thr_aboveNsigma(indexOfInterest, how_many_sigma)
-    imMatVeryClear = imVeryClear(image_mat, 0, (21, 5))
-
-    if testVars is None:
-        crysPitch, CrysRoll, CamPitch, CamRoll, rcam = access_saved_geometric(indexOfInterest)
-    else:
-        crysPitch, CrysRoll, CamPitch, CamRoll, rcam = testVars
-
-    rcamSpherical = np.array([rcam, r_theta, np.pi])
-
-    print("crysPitch = ", crysPitch, "CrysRoll = ", CrysRoll)
-    print("CamPitch = ", CamPitch, "CamRoll = ", CamRoll)
-    print("rcamSpherical = ", rcamSpherical)
-
-    geo = Geometry(crysPitch, CrysRoll, CamPitch, CamRoll, r_cam=rcam, r_theta=r_theta)
-    geolinesMat = geo.createLinesMatrix(imTest, np.max(im_very_clear), phiStepSize=0.0001)
-
-    title_l1 = f"Lα and Lβ lines for image {indexOfInterest}"
-    title_l2 = f"\ncrystal: Pitch = {crysPitch:.5g}, Roll = {CrysRoll:.5g}"
-    title_l3 = f"\ncamera: Pitch = {CamPitch:.5g}, Roll = {CamRoll:.5g}"
-    title_l4 = f"\nr_camera = {rcam:.5g}"
-
-    plt.imshow(imMatVeryClear + geolinesMat, cmap="hot")
-    plt.title(title_l1 + title_l2 + title_l3 + title_l4)
-    plt.show()
-
-    plt.imshow(image_mat + geolinesMat, cmap="hot")
-    plt.title(title_l1 + title_l2 + title_l3 + title_l4)
-    plt.show()
-
-    if plotEllipse_vs_geometric:
-        left_vars_y0ABc, right_vars_y0ABc, left_c_unc, right_c_unc = access_saved_ellipse(indexOfInterest)
-
-        cal_ellipse = Ellipse_Fit(image_mat, None, adjacentWeight=0.5,
-                                  extra_lineIntegral_width=True)
-
-        val_line = np.max(im_very_clear) / 4
-
-        matLeft = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=left_vars_y0ABc,
-                                                        value_of_line_points=val_line)
-        matRight = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=right_vars_y0ABc,
-                                                         value_of_line_points=val_line)
-
-        plt.imshow(matLeft + matRight + geolinesMat, cmap="jet")
-        plt.title("")
-        plt.show()
-
-
-# ---------- Visualisations of Params
-# Each crystal must be accounted for individually to avoid x-ray jitter error
-
-def violinPlot_ellipse_params(list_indexOI, ):
-    vals_dict_left = {
-        "y0": [],
-        "A": [],
-        "B": [],
-        "C": [],
-    }
-
-    vals_dict_right = {
-        "y0": [],
-        "A": [],
-        "B": [],
-        "C": [],
-    }
-
-    for iOI in list_indexOI:
-        left_vars_y0ABc, right_vars_y0ABc, left_c_unc, right_c_unc = access_saved_ellipse(iOI)
-
-        vals_dict_left["y0"].append(left_vars_y0ABc[0])
-        vals_dict_left["A"].append(left_vars_y0ABc[1])
-        vals_dict_left["B"].append(left_vars_y0ABc[2])
-        vals_dict_left["C"].append(left_vars_y0ABc[3])
-
-        vals_dict_right["y0"].append(right_vars_y0ABc[0])
-        vals_dict_right["A"].append(right_vars_y0ABc[1])
-        vals_dict_right["B"].append(right_vars_y0ABc[2])
-        vals_dict_right["C"].append(right_vars_y0ABc[3])
-
-    for str_side, dictionary in zip(["left", "right"], [vals_dict_left, vals_dict_right]):
-        print(str_side)
-        fig, axes = plt.subplots(1, 4, figsize=(18, 3))
-
-        for idx, (key, ax) in enumerate(zip(dictionary.keys(), axes)):
-            sns.violinplot(data=dictionary[key],
-                           inner="point",
-                           color="#00BFFF", linewidth=0, ax=ax)
-
-            sns.stripplot(data=dictionary[key], color="black", alpha=0.7, ax=ax)
-            ax.set_title(f"{str_side} line: {key}")
-            ax.grid(True)
-            ax.tick_params(axis='y', labelsize=5)
-            # ax.set_ylabel(f"{key}")
-
-        plt.tight_layout()
-        plt.show()
-
-
-def violinPlot_geo_params(list_indexOI):
-    vals_dict = {
-        "crystal pitch (rad)": [],
-        "crystal roll (rad)": [],
-        "camera pitch (rad)": [],
-        "camera roll (rad)": [],
-        "r cam (m)": [], }
-
-    for iOI in list_indexOI:
-        crysPitch, CrysRoll, CamPitch, CamRoll, rcam = access_saved_geometric(iOI)
-        optimised_geoParams = [crysPitch, CrysRoll, CamPitch, CamRoll, rcam]
-
-        for idx_param, key in enumerate(vals_dict.keys()):
-            vals_dict[key].append(optimised_geoParams[idx_param])
-
-    fig, axes = plt.subplots(1, 5, figsize=(20, 4))
-
-    for idx, (key, ax) in enumerate(zip(vals_dict.keys(), axes)):
-        sns.violinplot(data=vals_dict[key],
-                       inner="point",
-                       color="#00BFFF", linewidth=0, ax=ax)
-
-        sns.stripplot(data=vals_dict[key], color="black", alpha=0.7, ax=ax)
-        ax.set_title(f"{key}")
-        ax.grid(True)
-        ax.tick_params(axis='y', labelsize=7)
-        # ax.set_ylabel(f"{key}")
-
-    plt.tight_layout()
-    plt.show()
 
 
 def geo_engine_withSavedParams(index_oI):
@@ -1454,7 +1257,6 @@ def save_energy_and_solid_angle_matrix(indexOfInterest, savefile=True, folderpat
         plt.colorbar(label="Solid Angle")
         plt.show()
 
-
 def save_energy_mat(indexOfInterest, savefile=True, folderpath="stored_variables", ifplot=False, ):
     # Ensuring the folder is initialised
     index_folder = os.path.join(folderpath, str(indexOfInterest))
@@ -1480,7 +1282,6 @@ def save_energy_mat(indexOfInterest, savefile=True, folderpath="stored_variables
         plt.title("Energy Mapping of CCD image Plane")
         plt.colorbar(label="Energy (eV)")
         plt.show()
-
 
 def save_solidAngle_mat(indexOfInterest, savefile=True, folderpath="stored_variables", ifplot=False, ):
     # Ensuring the folder is initialised
@@ -1509,101 +1310,416 @@ def save_solidAngle_mat(indexOfInterest, savefile=True, folderpath="stored_varia
         plt.show()
 
 
-def plot_energy_solidAngle_mats(indexOfInterest, folderpath="stored_variables"):
-    index_folder = os.path.join(folderpath, str(indexOfInterest))
-    energy_filepath = os.path.join(index_folder, "energy_of_pixel.npy")
-    solid_angle_filepath = os.path.join(index_folder, "solid_angle_of_pixel.npy")
-
-    mat_Energy = np.load(energy_filepath)
-    mat_Solid_Angle = np.load(solid_angle_filepath)
-
-    plt.imshow(mat_Energy, cmap='jet')
-    plt.title("Energy Mapping of CCD image Plane")
-    plt.colorbar(label="Energy (eV)")
-    plt.show()
-
-    plt.imshow(mat_Solid_Angle, cmap='jet')
-    plt.title("Solid Angle Mapping of CCD image Plane")
-    plt.colorbar(label="Solid Angle")
-    plt.show()
-
-
 # -------- main export functions:
 
-def plotBinWidthLines(bin_width, index_of_interest):
-    crys_pitch, crys_roll, cam_pitch, cam_roll, r_cam = access_saved_geometric(index_of_interest)
 
-    energyBins = np.arange(1100, 1600 + bin_width, bin_width)
+class Calibrate:
+    def __init__(self,list_indices=list_data, folderpath="stored_variables"):
+        self.list_indices = list_indices
+        self.folderpath = folderpath
 
-    geo_engine = Geometry(crystal_pitch=crys_pitch, crystal_roll=crys_roll,
-                          camera_pitch=cam_pitch, camera_roll=cam_roll,
-                          r_cam=r_cam, )
+    def calibrate_quadratic(self):
+        print("calibrate_quadratic")
+        for indexOI in self.list_indices:
+            calibrate_and_save_quadratics(indexOI, folderpath=self.folderpath)
 
-    fig, ax = plt.subplots(figsize=(8, 8))
+    def calibrate_ellipse(self):
+        print("calibrate_ellipse")
+        for indexOI in self.list_indices:
+            fit_ellipse(indexOI, plot_Results=False, folderpath=self.folderpath)
 
-    # intialising the colours of the lines to better visibility
-    colors = itertools.cycle(['b', 'r', 'g', 'm', 'c', 'y'])
-    for energy in energyBins:
-        xy_E = geo_engine.xy_pixelCoords_of_E(energy)
-        x, y = zip(*xy_E)
+    def calibrate_geometric(self):
+        print("calibrate_geometric")
+        for indexOI in self.list_indices:
+            fit_geometry_to_ellipse(indexOI, folderpath=self.folderpath)
 
-        ax.plot(x, y, color=next(colors), linestyle='-')
+    def calibrate_geometric_usingQuad(self):
+        print("calibrate_geometric_usingQuad")
+        for indexOI in self.list_indices:
+            fit_geometry_to_ellipse(indexOI, folderpath=self.folderpath,useQuadratic=True)
 
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.set_title(f"Energy Lines for bin width = {bin_width}")
-    ax.grid(True)
+    def calibrate_energy_solidAngle(self):
+        print("calibrate_energy_solidAngle")
+        for indexOI in self.list_indices:
+            print(indexOI)
+            save_energy_and_solid_angle_matrix(indexOI, savefile=True, folderpath=self.folderpath)
 
-    plt.show()
-
-
-def calibrate_quadratic(list_indices=list_data, folderpath="stored_variables"):
-    print("calibrate_quadratic")
-    for indexOI in list_indices:
-        calibrate_and_save_quadratics(indexOI, folderpath=folderpath)
-
-
-def calibrate_ellipse(list_indices=list_data, folderpath="stored_variables"):
-    print("calibrate_ellipse")
-    for indexOI in list_indices:
-        fit_ellipse(indexOI, plot_Results=False, folderpath=folderpath)
-
-
-def calibrate_geometric(list_indices=list_data, folderpath="stored_variables"):
-    print("calibrate_geometric")
-    for indexOI in list_indices:
-        fit_geometry_to_ellipse(indexOI, folderpath=folderpath)
+    def calibrate_energy_mat(self):
+        print("calibrate_energy_mat")
+        for indexOI in self.list_indices:
+            print(indexOI)
+            save_energy_mat(indexOI, savefile=True, folderpath=self.folderpath)
 
 
-def calibrate_energy_solidAngle(list_indices=list_data, folderpath="stored_variables"):
-    print("calibrate_energy_solidAngle")
-    for indexOI in list_indices:
-        print(indexOI)
-        save_energy_and_solid_angle_matrix(indexOI, savefile=True, folderpath=folderpath)
+    def calibrate_solid_angle_mat(self):
+        print("calibrate_solid_angle_mat")
+        for indexOI in self.list_indices:
+            print(indexOI)
+            save_solidAngle_mat(indexOI, savefile=True, folderpath=self.folderpath)
+
+# -------- Visualisation Classes
+
+class TestPlot:
+    def __init__(self,indexOfInterest, how_many_sigma=2,):
+        self.indexOfInterest = indexOfInterest
+        self.how_many_sigma = how_many_sigma
+
+    def testPlotQuadLines(self,plot_gauss=True, ):
+        left_vars, right_vars = access_saved_quadratics(self.indexOfInterest)
+        Aleft = left_vars[0]
+        Bleft = left_vars[1]
+        Cleft = left_vars[2]
+
+        Aright = right_vars[0]
+        Bright = right_vars[1]
+        Cright = right_vars[2]
+
+        print(self.indexOfInterest)
+        image_mat, thr = mat_minusMean_thr_aboveNsigma(self.indexOfInterest, self.how_many_sigma)
+        mat_plot = image_mat
+
+        calibrate_tpql = Quadratic_Fit(image_mat, None, adjacentWeight=0.5, width_lineIntegral_5=True)
+        if plot_gauss:
+            calibrate_tpql.fitGaussianToLineIntegral(a=Aleft, b=Bleft, cBounds=(Cleft - 60, Cleft + 60),
+                                                     plotGauss=True)
+            calibrate_tpql.fitGaussianToLineIntegral(a=Aright, b=Bright, cBounds=(Cright - 60, Cright + 60),
+                                                     plotGauss=True, )
+
+        mat_quadLeft = calibrate_tpql.matrixWithLines(Aoptimised=Aleft, Boptimised=Bleft,
+                                                      Coptimised=Cleft, plotLines=False)
+        mat_quadRight = calibrate_tpql.matrixWithLines(Aoptimised=Aright, Boptimised=Bright,
+                                                       Coptimised=Cright, plotLines=False, )
+
+        val_line = np.max(mat_plot) / 4
+
+        mat_quadLeft = np.where(mat_quadLeft > 0, val_line, 0)
+        mat_quadRight = np.where(mat_quadRight > 0, val_line, 0)
+
+        # plt.imshow(mat_plot + mat_quadLeft + mat_quadRight, cmap="hot")
+        plt.imshow(mat_quadLeft + mat_quadRight, cmap="hot")
+        titleL1 = f"Image {self.indexOfInterest} with saved A(y-B)**2 + C coefficients"
+        titleL2 = f"\nLeft: A={Aleft:.2f}, B={Bleft:.2f}, C={Cleft:.2f}"
+        titleL3 = f"\nRight: A={Aright:.2f}, B={Bright:.2f}, C={Cright:.2f}"
+        plt.title(titleL1 + titleL2 + titleL3)
+        plt.show()
+
+    def testPlot_ellipse_lines(self,plot_gauss=True, ):
+        left_vars_y0ABc, right_vars_y0ABc, left_c_unc, right_c_unc = access_saved_ellipse(self.indexOfInterest)
+
+        print(self.indexOfInterest)
+        image_mat, thr = mat_minusMean_thr_aboveNsigma(self.indexOfInterest, self.how_many_sigma)
+        mat_plot = image_mat
+
+        cal_ellipse = Ellipse_Fit(image_mat, None, adjacentWeight=0.5,
+                                  extra_lineIntegral_width=True)
+        if plot_gauss:
+            params_Y0_A_B_left = left_vars_y0ABc[:-1]
+            c_left = left_vars_y0ABc[-1]
+            params_Y0_A_B_right = right_vars_y0ABc[:-1]
+            c_right = right_vars_y0ABc[-1]
+
+            cal_ellipse.fitGaussian(params_Y0_A_B=params_Y0_A_B_left, c_Bounds=(c_left - 60, c_left + 60))
+            cal_ellipse.fitGaussian(params_Y0_A_B=params_Y0_A_B_right, c_Bounds=(c_right - 60, c_right + 60))
+
+        val_line = np.max(mat_plot) / 4
+
+        mat_left = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=left_vars_y0ABc,
+                                                         value_of_line_points=val_line)
+        mat_right = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=right_vars_y0ABc,
+                                                          value_of_line_points=val_line)
+
+        plt.imshow(mat_plot + mat_left + mat_right, cmap="hot")
+        # plt.imshow(mat_left + mat_right, cmap="hot")
+        titleL1 = f"Image {self.indexOfInterest} with saved x = c + A - A*np.sqrt(1 - (Y-Y0)**2 / B**2) coefficients"
+        titleL2 = f"\nLeft: c={left_vars_y0ABc[-1]:.2f}, A={left_vars_y0ABc[1]:.2f}, y0={left_vars_y0ABc[0]:.2f}, B={left_vars_y0ABc[2]}"
+        titleL3 = f"\nRight: c={right_vars_y0ABc[-1]:.2f}, A={right_vars_y0ABc[1]:.2f}, y0={right_vars_y0ABc[0]:.2f}, B={right_vars_y0ABc[2]}"
+        plt.title(titleL1 + titleL2 + titleL3)
+        plt.show()
+
+    def testPlotGeometryLines(self, r_theta=2.567,testVars=None, plotEllipse_vs_geometric=False):
+        print(self.indexOfInterest)
+
+        image_mat, thr = mat_minusMean_thr_aboveNsigma(self.indexOfInterest, self.how_many_sigma)
+        imMatVeryClear = imVeryClear(image_mat, 0, (21, 5))
+
+        if testVars is None:
+            crysPitch, CrysRoll, CamPitch, CamRoll, rcam = access_saved_geometric(self.indexOfInterest)
+        else:
+            crysPitch, CrysRoll, CamPitch, CamRoll, rcam = testVars
+
+        rcamSpherical = np.array([rcam, r_theta, np.pi])
+
+        print("crysPitch = ", crysPitch, "CrysRoll = ", CrysRoll)
+        print("CamPitch = ", CamPitch, "CamRoll = ", CamRoll)
+        print("rcamSpherical = ", rcamSpherical)
+
+        geo = Geometry(crysPitch, CrysRoll, CamPitch, CamRoll, r_cam=rcam, r_theta=r_theta)
+        geolinesMat = geo.createLinesMatrix(imTest, np.max(im_very_clear), phiStepSize=0.0001)
+
+        title_l1 = f"Lα and Lβ lines for image {self.indexOfInterest}"
+        title_l2 = f"\ncrystal: Pitch = {crysPitch:.5g}, Roll = {CrysRoll:.5g}"
+        title_l3 = f"\ncamera: Pitch = {CamPitch:.5g}, Roll = {CamRoll:.5g}"
+        title_l4 = f"\nr_camera = {rcam:.5g}"
+
+        plt.imshow(imMatVeryClear + geolinesMat, cmap="hot")
+        plt.title(title_l1 + title_l2 + title_l3 + title_l4)
+        plt.show()
+
+        plt.imshow(image_mat + geolinesMat, cmap="hot")
+        plt.title(title_l1 + title_l2 + title_l3 + title_l4)
+        plt.show()
+
+        if plotEllipse_vs_geometric:
+            left_vars_y0ABc, right_vars_y0ABc, left_c_unc, right_c_unc = access_saved_ellipse(self.indexOfInterest)
+
+            cal_ellipse = Ellipse_Fit(image_mat, None, adjacentWeight=0.5,
+                                      extra_lineIntegral_width=True)
+
+            val_line = np.max(im_very_clear) / 4
+
+            matLeft = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=left_vars_y0ABc,
+                                                            value_of_line_points=val_line)
+            matRight = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=right_vars_y0ABc,
+                                                             value_of_line_points=val_line)
+
+            plt.imshow(matLeft + matRight + geolinesMat, cmap="jet")
+            plt.title("")
+            plt.show()
+
+    def plot_energy_mats(self,folderpath="stored_variables"):
+        index_folder = os.path.join(folderpath, str(self.indexOfInterest))
+        energy_filepath = os.path.join(index_folder, "energy_of_pixel.npy")
+        mat_Energy = np.load(energy_filepath)
+
+        plt.imshow(mat_Energy, cmap='jet')
+        plt.title(f"Image {self.indexOfInterest} Energy Mapping of CCD image Plane")
+        plt.colorbar(label="Energy (eV)")
+        plt.show()
+
+    def plot_solidAngle_mats(self, folderpath="stored_variables"):
+        index_folder = os.path.join(folderpath, str(self.indexOfInterest))
+        solid_angle_filepath = os.path.join(index_folder, "solid_angle_of_pixel.npy")
+        mat_Solid_Angle = np.load(solid_angle_filepath)
+
+        plt.imshow(mat_Solid_Angle, cmap='jet')
+        plt.title(f"Image {self.indexOfInterest} Solid Angle Mapping of CCD image Plane")
+        plt.colorbar(label="Solid Angle (sr)")
+        plt.show()
+
+    def plotBinWidthLines(self, bin_width):
+        crys_pitch, crys_roll, cam_pitch, cam_roll, r_cam = access_saved_geometric(self.indexOfInterest)
+
+        energyBins = np.arange(1100, 1600 + bin_width, bin_width)
+
+        geo_engine = Geometry(crystal_pitch=crys_pitch, crystal_roll=crys_roll,
+                              camera_pitch=cam_pitch, camera_roll=cam_roll,
+                              r_cam=r_cam, )
+
+        fig, ax = plt.subplots(figsize=(8, 8))
+
+        # intialising the colours of the lines to better visibility
+        colors = itertools.cycle(['b', 'r', 'g', 'm', 'c', 'y'])
+        for energy in energyBins:
+            xy_E = geo_engine.xy_pixelCoords_of_E(energy)
+            x, y = zip(*xy_E)
+
+            ax.plot(x, y, color=next(colors), linestyle='-')
+
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_title(f"Image {self.indexOfInterest} Energy Lines for bin width = {bin_width}")
+        ax.grid(True)
+
+        plt.show()
+
+class Violin:
+    def __init__(self,list_indexOI=list_data):
+        self.list_indexOI = list_indexOI
+
+    @staticmethod
+    def plotViolins_curve(left_dictionary, right_dictionary, title_Equation):
+
+        number_of_variables = len(left_dictionary)
+
+        for str_side, dictionary in zip(["Left", "Right"], [left_dictionary, right_dictionary]):
+            print(str_side)
+            fig, axes = plt.subplots(1, number_of_variables, figsize=(18, 3))
+
+            for idx, (key, ax) in enumerate(zip(dictionary.keys(), axes)):
+                sns.violinplot(data=dictionary[key],
+                               inner="point",
+                               color="#00BFFF", linewidth=0, ax=ax)
+
+                sns.stripplot(data=dictionary[key], color="black", alpha=0.7, ax=ax)
+                ax.set_title(f"{key}")
+                ax.grid(True)
+                ax.tick_params(axis='y', labelsize=5)
+                # ax.set_ylabel(f"{key}")
+
+            # Add a title to the whole figure
+            fig.suptitle(f"{str_side} Line : {title_Equation}", fontsize=16,
+                         # y=1.05
+                         )
+            plt.tight_layout()
+            plt.show()
 
 
-def calibrate_energy_mat(list_indices=list_data, folderpath="stored_variables"):
-    print("calibrate_energy_mat")
-    for indexOI in list_indices:
-        print(indexOI)
-        save_energy_mat(indexOI, savefile=True, folderpath=folderpath)
+    def quadratic_params(self):
+        vals_dict_left = {
+            "A": [],
+            "B": [],
+            "C": [],
+        }
+
+        vals_dict_right = {
+            "A": [],
+            "B": [],
+            "C": [],
+        }
+
+        for iOI in self.list_indexOI:
+            left_vars, right_vars = access_saved_quadratics(iOI)
+
+            vals_dict_left["A"].append(left_vars[0])
+            vals_dict_left["B"].append(left_vars[1])
+            vals_dict_left["C"].append(left_vars[2])
+
+            vals_dict_right["A"].append(right_vars[0])
+            vals_dict_right["B"].append(right_vars[1])
+            vals_dict_right["C"].append(right_vars[2])
+
+        self.plotViolins_curve(left_dictionary=vals_dict_left, right_dictionary=vals_dict_right,
+                               title_Equation="x = A(y-B)**2 + C")
 
 
-def calibrate_solid_angle_mat(list_indices=list_data, folderpath="stored_variables"):
-    print("calibrate_solid_angle_mat")
-    for indexOI in list_indices:
-        print(indexOI)
-        save_solidAngle_mat(indexOI, savefile=True, folderpath=folderpath)
+    def ellipse_params(self, ):
+        vals_dict_left = {
+            "y0": [],
+            "A": [],
+            "B": [],
+            "C": [],
+        }
+
+        vals_dict_right = {
+            "y0": [],
+            "A": [],
+            "B": [],
+            "C": [],
+        }
+
+        for iOI in self.list_indexOI:
+            left_vars_y0ABc, right_vars_y0ABc, left_c_unc, right_c_unc = access_saved_ellipse(iOI)
+
+            vals_dict_left["y0"].append(left_vars_y0ABc[0])
+            vals_dict_left["A"].append(left_vars_y0ABc[1])
+            vals_dict_left["B"].append(left_vars_y0ABc[2])
+            vals_dict_left["C"].append(left_vars_y0ABc[3])
+
+            vals_dict_right["y0"].append(right_vars_y0ABc[0])
+            vals_dict_right["A"].append(right_vars_y0ABc[1])
+            vals_dict_right["B"].append(right_vars_y0ABc[2])
+            vals_dict_right["C"].append(right_vars_y0ABc[3])
+
+        self.plotViolins_curve(left_dictionary=vals_dict_left, right_dictionary=vals_dict_right,
+                               title_Equation="x = C+A-A sqrt(1- (y-y0)**2 / B**2)")
+
+    def geo_params(self):
+        vals_dict = {
+            "crystal pitch (rad)": [],
+            "crystal roll (rad)": [],
+            "camera pitch (rad)": [],
+            "camera roll (rad)": [],
+            "r cam (m)": [], }
+
+        for iOI in self.list_indexOI:
+            crysPitch, CrysRoll, CamPitch, CamRoll, rcam = access_saved_geometric(iOI)
+            optimised_geoParams = [crysPitch, CrysRoll, CamPitch, CamRoll, rcam]
+
+            for idx_param, key in enumerate(vals_dict.keys()):
+                vals_dict[key].append(optimised_geoParams[idx_param])
+
+        fig, axes = plt.subplots(1, 5, figsize=(20, 4))
+
+        for idx, (key, ax) in enumerate(zip(vals_dict.keys(), axes)):
+            sns.violinplot(data=vals_dict[key],
+                           inner="point",
+                           color="#00BFFF", linewidth=0, ax=ax)
+
+            sns.stripplot(data=vals_dict[key], color="black", alpha=0.7, ax=ax)
+            ax.set_title(f"{key}")
+            ax.grid(True)
+            ax.tick_params(axis='y', labelsize=5)
+
+        fig.suptitle(f"Geometric Fittings using Elliptical Curves", fontsize=16,
+                     # y=1.05
+                     )
+
+        plt.tight_layout()
+        plt.show()
+
+
+    def geo_params_usingQuad(self,folderpath="stored_variables"):
+        vals_dict = {
+            "crystal pitch (rad)": [],
+            "crystal roll (rad)": [],
+            "camera pitch (rad)": [],
+            "camera roll (rad)": [],
+            "r cam (m)": [], }
+
+        for iOI in self.list_indexOI:
+            index_folder = os.path.join(folderpath, str(iOI))
+            filepath = os.path.join(index_folder, "geometric_fits_usingQuad.npy")
+
+            saved_variables = np.load(filepath)
+
+            crysPitch = saved_variables[0]
+            CrysRoll = saved_variables[1]
+            CamPitch = saved_variables[2]
+            CamRoll = saved_variables[3]
+            rcam = saved_variables[4]
+            optimised_geoParams = [crysPitch, CrysRoll, CamPitch, CamRoll, rcam]
+
+            for idx_param, key in enumerate(vals_dict.keys()):
+                vals_dict[key].append(optimised_geoParams[idx_param])
+
+        fig, axes = plt.subplots(1, 5, figsize=(20, 4))
+
+        for idx, (key, ax) in enumerate(zip(vals_dict.keys(), axes)):
+            sns.violinplot(data=vals_dict[key],
+                           inner="point",
+                           color="#00BFFF", linewidth=0, ax=ax)
+
+            sns.stripplot(data=vals_dict[key], color="black", alpha=0.7, ax=ax)
+            ax.set_title(f"{key}")
+            ax.grid(True)
+            ax.tick_params(axis='y', labelsize=6)
+
+        fig.suptitle(f"Geometric Fittings using Quadratic Curves", fontsize=16,
+                     # y=1.05
+                     )
+        plt.tight_layout()
+        plt.show()
 
 
 if __name__ == '__main__':
     def calibrate_all(list_indices=list_data, folder_path="stored_variables"):
-        calibrate_quadratic(list_indices=list_indices, folderpath=folder_path)
-        calibrate_ellipse(list_indices=list_indices, folderpath=folder_path)
-        calibrate_geometric(list_indices=list_indices, folderpath=folder_path)
-        calibrate_energy_solidAngle(list_indices=list_indices, folderpath=folder_path)
 
-    calibrate_all()
+        cal = Calibrate(list_indices,folder_path)
+        cal.calibrate_quadratic()
+        cal.calibrate_ellipse()
+        cal.calibrate_geometric()
+        cal.calibrate_geometric_usingQuad()
+        cal.calibrate_energy_solidAngle()
+
+
+    def calibrate_oneType(list_indices=list_data, folder_path="stored_variables"):
+        cal = Calibrate(list_indices,folder_path)
+        cal.calibrate_geometric_usingQuad()
+
+
+    # calibrate_oneType()
+
+    # calibrate_all()
 
 
     # calibrate_ellipse([11])
@@ -1616,8 +1732,14 @@ if __name__ == '__main__':
     # calibrate_solid_angle_mat()
     # calibrate_energy_solidAngle()
 
+    # Violin().geo_params_usingQuad()
+    # Violin().geo_params()
+
     # violinPlot_geo_params(list_data)
     # violinPlot_ellipse_params(list_data)
+    # violinPlot_quadratic_params(list_data)
+
+    # print(access_saved_quadratics(1,))
 
     # plot_energy_solidAngle_mats(1)
 

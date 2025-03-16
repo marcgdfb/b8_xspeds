@@ -636,7 +636,7 @@ def calibrate_and_save_quadratics(indexOfInterest,
     print("Index: ", indexOfInterest)
 
     # ----------pedestal mean and sigma----------
-    image_mat, thr = mat_thr_aboveNsigma(indexOfInterest, howManySigma)
+    image_mat, thr = mat_minusMean_thr_aboveNsigma(indexOfInterest, howManySigma)
     imMatVeryClear = imVeryClear(image_mat, 0, (21, 5))
 
     # ---------- Initialise Calibrate Engine and log the initialising parameters ----------

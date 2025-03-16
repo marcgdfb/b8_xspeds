@@ -252,7 +252,7 @@ kdic = kernelDict()
 
 
 class PhotonCounting:
-    def __init__(self, indexOfInterest, no_photon_adu_thr=50, sp_adu_thr=180, dp_adu_thr=240,
+    def __init__(self, indexOfInterest, no_photon_adu_thr=80, sp_adu_thr=180, dp_adu_thr=240,
                  tp_adu_thr=400,quad_p_adu_thr=550, quint_p_adu_thr=700,
                  removeRows0To_=0, howManySigma_thr=2, ):
 

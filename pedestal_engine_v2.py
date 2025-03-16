@@ -4,8 +4,6 @@ from probability_tools import *
 
 
 class Pedestal:
-
-
     def __init__(self, imageMatrix, title_matrix, bins=300, pedestalOffset_adu=None):
         self.imageMatrix = imageMatrix
         self.title_matrix = title_matrix
@@ -207,7 +205,32 @@ def mat_thr_aboveNsigma(index_of_interest, how_many_sigma, ):
 
     return image_mat, thr
 
+def mat_minusMean_thr_aboveNsigma(index_of_interest, how_many_sigma, ):
+    image_mat = loadData()[index_of_interest]
+    # ----------pedestal mean and sigma----------
+    ped_mean, ped_sigma = pedestal_mean_sigma_awayFromLines(image_mat, index_of_interest)
+    thr = how_many_sigma * ped_sigma
 
+    mat_minusMean = image_mat.astype(np.int16) - ped_mean
+    mat_minusMean[mat_minusMean < 0] = 0
+
+    mat_minusMean = np.where(mat_minusMean > thr, mat_minusMean, 0)
+
+    return mat_minusMean, thr
+
+def create_sum_all_images():
+    matzeros = np.zeros((2048,2048))
+    for index in range(len(loadData())):
+        # image_mat, __ = mat_thr_aboveNsigma(index, 2)
+
+        image_mat = loadData()[index]
+        matzeros += image_mat
+
+    plt.imshow(matzeros, cmap='hot')
+    plt.title("Matrix Sum of All Raw Images")
+    plt.ylabel("Image j Index")
+    plt.xlabel("Image i Index")
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -225,9 +248,11 @@ if __name__ == "__main__":
 
     # check_spcUsage(8)
 
-    image_mat11, thr2sigma11 = mat_thr_aboveNsigma(11,2)
-    plt.imshow(image_mat11,cmap='hot')
-    plt.show()
+    # image_mat11, thr2sigma11 = mat_minusMean_thr_aboveNsigma(11,2)
+    # plt.imshow(image_mat11,cmap='hot')
+    # plt.show()
+
+    # create_sum_all_images()
 
     pass
 
