@@ -232,6 +232,11 @@ def create_sum_all_images():
     plt.xlabel("Image i Index")
     plt.show()
 
+def plot_sigmaThr_mat(indexOI=8,how_many_sigma=2):
+    image_mat11, thr2sigma11 = mat_minusMean_thr_aboveNsigma(indexOI,how_many_sigma)
+    plt.imshow(image_mat11,cmap='hot')
+    plt.show()
+
 
 if __name__ == "__main__":
 
@@ -248,9 +253,8 @@ if __name__ == "__main__":
 
     # check_spcUsage(8)
 
-    # image_mat11, thr2sigma11 = mat_minusMean_thr_aboveNsigma(11,2)
-    # plt.imshow(image_mat11,cmap='hot')
-    # plt.show()
+
+    plot_sigmaThr_mat(8,2)
 
     # create_sum_all_images()
 

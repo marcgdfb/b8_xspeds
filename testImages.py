@@ -1,5 +1,6 @@
 import numpy as np
 from constants import *
+from pedestal_engine_v2 import *
 from imagePreProcessing import *
 
 # TODO: Create more unit tests
@@ -122,7 +123,112 @@ class TestImages:
         return im8_postk
 
 
+class SPC_Train_images:
+    def __init__(self,how_many_sigma, indexOfInterest=8,):
+        # using image 8
+        image8_mat = loadData()[indexOfInterest]
+
+        ped_mean, ped_sigma = pedestal_mean_sigma_awayFromLines(image8_mat, indexOfInterest)
+
+        image8_mat_minusMean, thr = mat_minusMean_thr_aboveNsigma(indexOfInterest,how_many_sigma)
+
+        self.ped_sigma = ped_sigma
+        self.imMat = image8_mat_minusMean
+
+    def get_cluster(self,topLeftCorner_ij, bottomRightCorner_ij):
+        return self.imMat[topLeftCorner_ij[0]:bottomRightCorner_ij[0]+1, topLeftCorner_ij[1]:bottomRightCorner_ij[1]+1]
+
+    def testData1(self):
+        return self.get_cluster(topLeftCorner_ij=(1419,636), bottomRightCorner_ij=(0,0))
+
+    def testData2(self):
+        return self.get_cluster(topLeftCorner_ij=(1457,1629), bottomRightCorner_ij=(1460,1632))
+
+    def createTestData(self,num_photons, matrix_size=(100, 100), mean_adu=150, std_adu=30,
+                       returnJustImage=False,seed=None):
+
+        if seed is not None:
+            np.random.seed(seed)
+
+        image = np.zeros(matrix_size, dtype=float)
+        noise_mat = generate_pedestal_mat(self.ped_sigma,x0=0,nrows=matrix_size[0],ncols=matrix_size[1])
+
+        # For reproducibility in tests, you might set a random seed outside this function if desired.
+        spread_patterns = [
+            [(0, 0)],  # Single pixel
+            [(0, 0)],  # Single pixel (again so we don't over favour the others)
+            [(0, 0), (0, 1)],  # Adjacent horizontally
+            [(0, 0), (1, 0)],  # Adjacent vertically
+            [(0, 0), (0, 1), (1, 0)],  # L-shape 1
+            [(0, 0), (0, 1), (1, 1)],  # L-shape 2
+            [(0, 0), (1, 1), (1, 0)],  # L-shape 3
+            [(0, 1), (1, 1), (1, 0)],  # L-shape 4
+            [(0, 0), (0, 1), (1, 0), (1, 1)],  # Square spread
+            [(0, 0), (0, 1), (1, 0), (1, 1)]  # Square spread (again)
+        ]
+        weights = [
+            [1.0],  # Single pixel
+            [1.0],  # Single pixel
+            [0.7, 0.3],  # Adjacent horizontally
+            [0.7, 0.3],  # Adjacent vertically
+            [0.6, 0.2, 0.2],  # L-shape 1, brightest at top corner
+            [0.2, 0.6, 0.2],  # L-shape 2,
+            [0.2, 0.2, 0.6],  # L-shape 3,
+            [0.2, 0.6, 0.2],  # L-shape 4,
+            [0.4, 0.3, 0.2, 0.1],  # Square spread, brightest at top-left
+            [0.1, 0.3, 0.2, 0.4]  # Square spread, brightest at bottom right
+        ]
+        for _ in range(num_photons):
+            # Choose random base pixel
+            base_x = np.random.randint(0, matrix_size[0])
+            base_y = np.random.randint(0, matrix_size[1])
+
+            # Choose a spread pattern
+            pattern_index = np.random.randint(0, len(spread_patterns))
+            pattern = spread_patterns[pattern_index]
+            pattern_weights = weights[pattern_index]
+            adu_signal = np.random.normal(loc=mean_adu, scale=std_adu)
+
+            # Normalize weights to ensure total ADU is preserved
+            normalized_weights = np.array(pattern_weights) / sum(pattern_weights)
+
+            for (dx, dy), weight in zip(pattern, normalized_weights):
+                x = np.clip(base_x + dx, 0, matrix_size[0] - 1)
+                y = np.clip(base_y + dy, 0, matrix_size[1] - 1)
+                image[x, y] += adu_signal * weight
+
+        imageWithNoise = image + noise_mat
+        imageWithNoise = np.where(imageWithNoise > 2*self.ped_sigma,imageWithNoise,0)
+
+        if returnJustImage:
+            return image
+        else:
+            return imageWithNoise
+
+
+    def test_createTestData(num_photons, matrix_size=(100, 100), mean_adu=150, std_adu=10,
+                       returnJustImage=False,seed=125):
+        spcTrain = SPC_Train_images(2)
+
+        mat = spcTrain.createTestData(num_photons, matrix_size=matrix_size, mean_adu=mean_adu, std_adu=std_adu,
+                       returnJustImage=returnJustImage,seed=seed)
+
+        # plt.imshow(mat)
+        # plt.title("Unit Test Image with noise and 2 sigma thresholding")
+        # plt.show()
+
+        return mat
+
+
+
+
 if __name__ == "__main__":
+
+
+
+    # spc8 = SPC_Train_images(2,8)
+    # plt.imshow(spc8.get_cluster(topLeftCorner_ij=(500,500), bottomRightCorner_ij=(520,520)))
+    # plt.show()
 
     # plt.imshow(TestImages().islands())
     # plt.show()

@@ -69,6 +69,15 @@ def generateImageGauss(x0,sigma,nrows=2048,ncols=2048,printMatrix=False,threshol
     return matGauss
 
 
+def generate_pedestal_mat(sigma, x0=0, nrows=2048, ncols=2048):
+    matGauss = np.zeros((nrows,ncols))
+
+    for i in range(nrows):
+        for j in range(ncols):
+            matGauss[i,j] = np.random.normal(loc=x0,scale=sigma)
+
+    return matGauss
+
 
 if __name__ == "__main__":
 

@@ -1,11 +1,11 @@
 import os
-from pedestal_engine_v2 import *
 from tools import *
 from testImages import *
 import time
 from datetime import datetime
 
 im8_filepath = r"old_logs_and_stored_variables/v1/data_logs\image_matrices\image_8"
+
 
 # TODO: test island searching algorithm with unit tests
 
@@ -253,7 +253,7 @@ kdic = kernelDict()
 
 class PhotonCounting:
     def __init__(self, indexOfInterest, no_photon_adu_thr=80, sp_adu_thr=180, dp_adu_thr=240,
-                 tp_adu_thr=400,quad_p_adu_thr=550, quint_p_adu_thr=700,
+                 tp_adu_thr=400, quad_p_adu_thr=550, quint_p_adu_thr=700,
                  removeRows0To_=0, howManySigma_thr=2, ):
 
         def printVar():
@@ -504,7 +504,7 @@ class PhotonCounting:
                     # Consider areas of the same size as the kernel:
 
                     # Note this only is needed to account for the l with i+1 and j+1 not being a part of the shape
-                    if shape_tuple == (4,4):
+                    if shape_tuple == (4, 4):
                         if checked_mat[i + 1, j + 1] and checked_mat[i + 2, j + 2] == 1:
                             continue
                     else:
@@ -560,12 +560,12 @@ class PhotonCounting:
                                 outputDict_kt["countReject"] += 1
                                 continue
 
-
                             if totVal < self.sp_adu_thr:
                                 keyOrderedList = sorted_keys_by_value(dict_vals)
                                 max_key = keyOrderedList[0]
 
-                                outputDict_kt["list_countij"].append([1, i + dict_idx[max_key][0], j + + dict_idx[max_key][0]])
+                                outputDict_kt["list_countij"].append(
+                                    [1, i + dict_idx[max_key][0], j + + dict_idx[max_key][0]])
                                 outputDict_kt["count_1photon"] += 1
                             elif totVal < self.dp_adu_thr:
                                 keyOrderedList = sorted_keys_by_value(dict_vals)
@@ -654,18 +654,17 @@ class PhotonCounting:
 
         return output_dictionaries, imMat_pRemoved
 
-
-    def operateOnIslands(self,image_matrix_replace=None, plot_checkedMat=False):
+    def operateOnIslands(self, image_matrix_replace=None, plot_checkedMat=False, diagnosticPrint=False):
 
         results_dict = {
             "number_of_islands": 0,
             "number_rejected": 0,
-            "number_higher_than_capture":0,
+            "number_of_photons": 0,
+            "number_higher_than_capture": 0,
             "number_of_points": [],
-            "total_ADU":[],
+            "total_ADU": [],
             "list_countij": [],
         }
-
 
         if image_matrix_replace is None:
             moI = self.imMat  # Matrix of Interest
@@ -675,7 +674,6 @@ class PhotonCounting:
         nrows, ncols = moI.shape
         # Create a matrix with checked points
         checked_mat = np.zeros((nrows, ncols))
-        islands_list = []
 
         def scour_for_neighbours(i_idx, j_idx, island_list, islandValList):
             if i_idx < 0 or i_idx >= nrows or j_idx < 0 or j_idx >= ncols:
@@ -689,20 +687,19 @@ class PhotonCounting:
             island_list.append((i_idx, j_idx))
             islandValList.append(moI[i_idx, j_idx])
 
-
             # Now scour for neighbours
 
             for di, dj in [(-1, 0),
                            (0, -1), (0, 1),
-                           (1, 0),]:
-                scour_for_neighbours(i_idx + di, j_idx + dj, island_list,islandValList)
+                           (1, 0), ]:
+                scour_for_neighbours(i_idx + di, j_idx + dj, island_list, islandValList)
 
         for i in range(nrows):
             for j in range(ncols):
                 if moI[i, j] != 0 and checked_mat[i, j] == 0:
                     island = []
                     islandVals = []
-                    scour_for_neighbours(i, j, island,islandVals)  # island has been appended and totVal acquired
+                    scour_for_neighbours(i, j, island, islandVals)  # island has been appended and totVal acquired
 
                     totVal = 0
                     for val in islandVals:
@@ -732,6 +729,8 @@ class PhotonCounting:
                         results_dict["number_higher_than_capture"] += 1
                         continue
 
+                    results_dict["number_of_photons"] += numPhotons
+
                     idx_ordered_list = sorted(range(len(islandVals)), key=lambda i: islandVals[i], reverse=True)
 
                     if numPhotons > numPoints:
@@ -744,24 +743,22 @@ class PhotonCounting:
                             idx_photon = idx_ordered_list[number]  # ie find the idx of this photon
                             ij_tuple = island[idx_photon]
 
+                            if diagnosticPrint:
+                                print(f"Photon at (i,j) = {ij_tuple}")
+
                             results_dict["list_countij"].append([1, ij_tuple[0], ij_tuple[1]])
 
-
-
-        print("-"*30)
-        print("Number of islands: ",results_dict["number_of_islands"])
-        print("Number rejected: ",results_dict["number_rejected"])
-        print("Number of counts: ",results_dict["number_of_islands"] - results_dict["number_rejected"])
-        print("Number of ADU counts higher than capture: ",results_dict["number_higher_than_capture"])
+        print("-" * 30)
+        print("Number of islands: ", results_dict["number_of_islands"])
+        print("Number rejected: ", results_dict["number_rejected"])
+        print("Number of counts: ", results_dict["number_of_photons"])
+        print("Number of ADU counts higher than capture: ", results_dict["number_higher_than_capture"])
 
         if plot_checkedMat:
             plt.imshow(checked_mat)
             plt.show()
 
         return results_dict
-
-
-
 
     class KernelTypes:
         def __init__(self, parentClass, initialisedOutputDict,
@@ -895,7 +892,44 @@ class PhotonCounting:
             return output_dict, image_copy
 
 
+class Unit_testing:
+
+    @staticmethod
+    def unitTest1(num_photons=1000, matrix_size=(100, 100), mean_adu=150, std_adu=10,
+                  returnJustImage=False, seed=125):
+        spcTrain = SPC_Train_images(2)
+
+        unit_test_mat = spcTrain.createTestData(num_photons, matrix_size=matrix_size, mean_adu=mean_adu,
+                                                std_adu=std_adu,
+                                                returnJustImage=returnJustImage, seed=seed)
+
+        adu_thr = [
+            80,  # no_photon_adu_thr
+            180,  # sp_adu_thr
+            240,  # dp_adu_thr
+            400,  # tp_adu_thr
+            550,  # quad_p_adu_thr
+            700,  # quint_p_adu_thr
+        ]
+
+        def loss_function(params):
+            pc_eng = PhotonCounting(8, no_photon_adu_thr=params[0], sp_adu_thr=params[1], dp_adu_thr=params[2],
+                                    tp_adu_thr=params[3], quad_p_adu_thr=params[4], quint_p_adu_thr=params[5],
+                                    removeRows0To_=0, howManySigma_thr=2, )
+
+            results_dict = pc_eng.operateOnIslands(image_matrix_replace=unit_test_mat, diagnosticPrint=True)
+
+            numCaptured = results_dict["number_of_photons"]
+            num_above_capture = results_dict["number_higher_than_capture"]
+
+        loss_function(adu_thr)
+
+
 if __name__ == "__main__":
+
+    Unit_testing().unitTest1()
+
+
     def test_TypePhoton():
 
         hms_thr = 2
@@ -993,12 +1027,11 @@ if __name__ == "__main__":
         pc = PhotonCounting(indexOfInterest=8, no_photon_adu_thr=30, howManySigma_thr=hms_thr)
 
         save_dict = {
-            "folderpath":im8_filepath,
+            "folderpath": im8_filepath,
             "filename": "test3",
         }
 
-        pc.efficient_imageScan(report=True,intermediary_matrices_arg_dict=None,diagnostics=False)
-
+        pc.efficient_imageScan(report=True, intermediary_matrices_arg_dict=None, diagnostics=False)
 
 
     # test_efficient_scan()
@@ -1018,6 +1051,7 @@ if __name__ == "__main__":
         plt.imshow(testMat)
         plt.show()
 
-    test_islands()
+
+    # test_islands()
 
     pass

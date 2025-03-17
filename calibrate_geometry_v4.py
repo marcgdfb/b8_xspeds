@@ -799,18 +799,19 @@ class SolidAngle:
 
 # ---------- Calibration and saving of Quadratic Parameters:
 
-def calibrate_and_save_quadratics(indexOfInterest,
-                                  howManySigma=2, adjacent_pixel_weighting=0.5, pixelwidth_lineintegral_5=True,
-                                  bBounds=None,
-                                  folderpath="stored_variables", saveData=True,
-                                  plot_Results=False,
-                                  ):
+def fit_quadratics(indexOfInterest,
+                   howManySigma=2, adjacent_pixel_weighting=0.5, pixelwidth_lineintegral_5=True,
+                   bBounds=None,
+                   folderpath="stored_variables", saveData=True,
+                   plot_Results=False,
+                   ):
     # initialise subfolder if it doesn't exist
     index_folder = os.path.join(folderpath, str(indexOfInterest))
     if not os.path.exists(index_folder):
         os.makedirs(index_folder)
 
     logFile = os.path.join(index_folder, "quadratic_fits_log.txt")
+    app = Append_to_file(logFile).append
 
     print("Index: ", indexOfInterest)
 
@@ -822,13 +823,14 @@ def calibrate_and_save_quadratics(indexOfInterest,
 
     cal = Quadratic_Fit(image_mat, logFile, adjacentWeight=adjacent_pixel_weighting,
                         width_lineIntegral_5=pixelwidth_lineintegral_5)
-    append_to_file(cal.log, "-" * 30)
-    append_to_file(cal.log, f"Index of Interest {indexOfInterest}, thresholded above {howManySigma} sigma")
-    append_to_file(cal.log, f"Adjacent pixels weighted by {adjacent_pixel_weighting}")
+    app("-" * 30)
+    app(f"Start: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}")
+    app(f"Index of Interest {indexOfInterest}, thresholded above {howManySigma} sigma")
+    app(f"Adjacent pixels weighted by {adjacent_pixel_weighting}")
     if pixelwidth_lineintegral_5:
-        append_to_file(cal.log, "Line integral used pixel width of 5")
+        app("Line integral used pixel width of 5")
     else:
-        append_to_file(cal.log, "Line integral used pixel width of 3")
+        app("Line integral used pixel width of 3")
 
     # Note the values of A,B,C are appended to the log file within the following functions:
     if bBounds is None:
@@ -844,6 +846,8 @@ def calibrate_and_save_quadratics(indexOfInterest,
 
     LinesMatLeft = np.where(leftLineMat > 0, thr, 0)
     LinesMatRight = np.where(rightLineMat > 0, thr, 0)
+
+    app(f"Finish: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}")
 
     if saveData:
         filepath = os.path.join(index_folder, "quadratic_fits.npy")
@@ -1321,7 +1325,7 @@ class Calibrate:
     def calibrate_quadratic(self):
         print("calibrate_quadratic")
         for indexOI in self.list_indices:
-            calibrate_and_save_quadratics(indexOI, folderpath=self.folderpath)
+            fit_quadratics(indexOI, folderpath=self.folderpath)
 
     def calibrate_ellipse(self):
         print("calibrate_ellipse")
@@ -1714,10 +1718,10 @@ if __name__ == '__main__':
 
     def calibrate_oneType(list_indices=list_data, folder_path="stored_variables"):
         cal = Calibrate(list_indices,folder_path)
-        cal.calibrate_geometric_usingQuad()
+        # cal.calibrate_geometric_usingQuad()
+        cal.calibrate_quadratic()
 
-
-    # calibrate_oneType()
+    calibrate_oneType()
 
     # calibrate_all()
 
