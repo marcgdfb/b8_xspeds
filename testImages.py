@@ -107,6 +107,35 @@ class TestImages:
         return mat_minusMean[topleft[0]:bottomright[0],topleft[1]:bottomright[1]]
 
     @staticmethod
+    def image8_cluster_reducedScheme1():
+
+        mat8, thr = mat_minusMean_thr_aboveNsigma(8,how_many_sigma=2)
+
+        topleft = (636, 1419)
+        bottomright = (650, 1427)
+
+        return mat8[topleft[0]:bottomright[0], topleft[1]:bottomright[1]]
+
+    @staticmethod
+    def image8_cluster_reducedScheme2():
+
+        mat8, thr = mat_minusMean_thr_aboveNsigma(8,how_many_sigma=2)
+
+        topleft = (660, 1420)
+        bottomright = (676, 1427)
+
+        return mat8[topleft[0]:bottomright[0], topleft[1]:bottomright[1]]
+
+    @staticmethod
+    def image8_cluster_reducedScheme3():
+        mat8, thr = mat_minusMean_thr_aboveNsigma(8, how_many_sigma=2)
+
+        topleft = (1760, 1472)
+        bottomright = (1781, 1481)
+
+        return mat8[topleft[0]:bottomright[0], topleft[1]:bottomright[1]]
+
+    @staticmethod
     def image_8_emission_lines(thr=0.0):
         topleft = (0,1250)
         bottomright = (2047,1650)
@@ -126,6 +155,7 @@ class TestImages:
 class SPC_Train_images:
     def __init__(self,how_many_sigma, indexOfInterest=8,):
         # using image 8
+        self.indexOfInterest = indexOfInterest
         image8_mat = loadData()[indexOfInterest]
 
         ped_mean, ped_sigma = pedestal_mean_sigma_awayFromLines(image8_mat, indexOfInterest)
@@ -144,9 +174,17 @@ class SPC_Train_images:
     def testData2(self):
         return self.get_cluster(topLeftCorner_ij=(1457,1629), bottomRightCorner_ij=(1460,1632))
 
-    def createTestData(self,num_photons, matrix_size=(100, 100), mean_adu=150, std_adu=30,
-                       returnJustImage=False,seed=None):
+    def anomalyData(self):
+        clusterMat = self.get_cluster(topLeftCorner_ij=(1391,1753), bottomRightCorner_ij=(1400,1761))
+        total = clusterMat.sum()
+        print(f"Anomalous Cluster total for image {self.indexOfInterest} is {total}")
 
+        return clusterMat
+
+    def createTestData(self,fillfraction=0.1, matrix_size=(100, 100), mean_adu=150, std_adu=30,
+                       returnJustImage=False,seed=None,addAnomaly=True ):
+
+        num_photons = int(matrix_size[0] * matrix_size[1] * fillfraction)
         if seed is not None:
             np.random.seed(seed)
 
@@ -202,29 +240,79 @@ class SPC_Train_images:
 
         if returnJustImage:
             return image
+        elif addAnomaly:
+            anomalyMat = self.anomalyData()
+
+            if matrix_size == (2048,2048):
+                imageWithNoise[1392:1401, 1754:1762] = anomalyMat
+            else:
+                imageWithNoise[72:81,54:62] = anomalyMat
+
+            return imageWithNoise
+
         else:
             return imageWithNoise
 
 
-    def test_createTestData(num_photons, matrix_size=(100, 100), mean_adu=150, std_adu=10,
-                       returnJustImage=False,seed=125):
-        spcTrain = SPC_Train_images(2)
+def test_createTestData(fillFraction=0.1, matrix_size=(100, 100), mean_adu=150, std_adu=10,
+                   returnJustImage=False,seed=125,addAnomaly=True):
+    spcTrain = SPC_Train_images(2)
 
-        mat = spcTrain.createTestData(num_photons, matrix_size=matrix_size, mean_adu=mean_adu, std_adu=std_adu,
-                       returnJustImage=returnJustImage,seed=seed)
+    mat = spcTrain.createTestData(fillfraction=fillFraction, matrix_size=matrix_size, mean_adu=mean_adu, std_adu=std_adu,
+                   returnJustImage=returnJustImage,seed=seed,addAnomaly=addAnomaly)
 
-        # plt.imshow(mat)
-        # plt.title("Unit Test Image with noise and 2 sigma thresholding")
-        # plt.show()
+    plt.imshow(mat)
+    plt.title(f"Unit Test Image with noise and 2 sigma thresholding and Anomaly. Seed = {seed}")
+    plt.show()
 
-        return mat
+    return mat
 
+
+def image8ClusterShow():
+    mat_cluster_1 = TestImages().image8_cluster_reducedScheme1()
+    mat_cluster_2 = TestImages().image8_cluster_reducedScheme2()
+    mat_cluster_3 = TestImages().image8_cluster_reducedScheme3()
+
+    fig, axs = plt.subplots(1, 3, figsize=(10, 3), constrained_layout=True)
+    cbar_ax = fig.add_axes([0.95, 0.15, 0.02, 0.7])  # Colorbar position
+
+    # Get global min and max for consistent color scaling
+    vmin = min(mat_cluster_1.min(), mat_cluster_2.min(), mat_cluster_3.min())
+    vmax = max(mat_cluster_1.max(), mat_cluster_2.max(), mat_cluster_3.max())
+
+    # Plot each matrix
+    im1 = axs[0].imshow(mat_cluster_1, vmin=vmin, vmax=vmax, cmap='viridis')
+    # axs[0].set_title("Scheme 1")
+    im2 = axs[1].imshow(mat_cluster_2, vmin=vmin, vmax=vmax, cmap='viridis')
+    # axs[1].set_title("Scheme 2")
+    im3 = axs[2].imshow(mat_cluster_3, vmin=vmin, vmax=vmax, cmap='viridis')
+    # axs[2].set_title("Scheme 3")
+
+    # Shared colorbar
+    fig.colorbar(im1, cax=cbar_ax)
+
+    # Global title
+    fig.suptitle("Unit Tests: Image 8", fontsize=16)
+
+    plt.show()
 
 
 
 if __name__ == "__main__":
 
+    # test_createTestData(0.1,matrix_size=(2048,2048), )
 
+
+    def findAnomalyTotal():
+        for index_ in [19]:
+            spcTest = SPC_Train_images(2,index_)
+            mat_anomaly = spcTest.anomalyData()
+
+            plt.imshow(mat_anomaly)
+            plt.show()
+
+
+    findAnomalyTotal()
 
     # spc8 = SPC_Train_images(2,8)
     # plt.imshow(spc8.get_cluster(topLeftCorner_ij=(500,500), bottomRightCorner_ij=(520,520)))
@@ -239,11 +327,10 @@ if __name__ == "__main__":
     # plt.imshow(np.load(r"C:\Users\marcg\OneDrive\Documents\Oxford Physics\Year 3\B8\b8_xspeds\data_logs\image_matrices\image_8\test2_3_3.npy"))
     # plt.show()
 
-    # plt.imshow(TestImages().image8_cluster(80))
-    # plt.show()
-    #
-    # plt.imshow(TestImages().image_8_emission_lines(80))
-    # plt.show()
+
+
+
+    image8ClusterShow()
 
 
     pass

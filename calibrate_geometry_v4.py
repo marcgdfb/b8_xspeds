@@ -206,6 +206,21 @@ class Geometry:
 
         print(v_ray_spherical)
 
+    def line_xyCoords(self,energy_line_eV):
+
+        xy_pixel = self.xy_pixelCoords_of_E(energy_line_eV)
+        x_coords_pixel = []
+        y_coords_pixel = []
+        for row in xy_pixel:
+            x_pixel = row[0]
+            y_pixel = row[1]
+
+            if x_pixel < length_detector_pixels and y_pixel < length_detector_pixels:
+                x_coords_pixel.append(x_pixel)
+                y_coords_pixel.append(y_pixel)
+
+        return np.array(x_coords_pixel), np.array(y_coords_pixel)
+
 
 class Quadratic_Fit:
     def __init__(self, imageMatrix, logTextFile=None, adjacentWeight=1.0, width_lineIntegral_5=False):
@@ -484,11 +499,11 @@ class Quadratic_Fit:
 class Ellipse_Fit:
     def __init__(self, imageMatrix, logTextFile=None, adjacentWeight=0.5,
                  loss_sigma_weight=1,
-                 extra_lineIntegral_width=False):
+                 how_many_adjacent_pixels_each_side = 3 ):
         self.imMat = imageMatrix
         self.log = logTextFile
         self.adjacentWeight = adjacentWeight
-        self.larger = extra_lineIntegral_width
+        self.how_many_adjacent_pixels_each_side = how_many_adjacent_pixels_each_side
         self.loss_sigma_weight = loss_sigma_weight
 
         self.x_pixel_width = imageMatrix.shape[1]
@@ -526,17 +541,19 @@ class Ellipse_Fit:
 
                 if 0 <= x_pixel < self.x_pixel_width:
                     c_totVal += self.imMat[y_pixel, x_pixel]
-                    if x_pixel + 1 < self.x_pixel_width:
-                        c_totVal += self.adjacentWeight * self.imMat[y_pixel, x_pixel + 1]
-                    if 0 < x_pixel - 1:
-                        c_totVal += self.adjacentWeight * self.imMat[y_pixel, x_pixel - 1]
+                    sigma = 1
+                    for d in range(1, self.how_many_adjacent_pixels_each_side):  # Adjust range to control width
+                        weight = np.exp(-d ** 2 / (2 * sigma ** 2))
 
-                    if self.larger:
-                        decayed_weight = self.adjacentWeight / 2
-                        if x_pixel + 2 < self.x_pixel_width:
-                            c_totVal += decayed_weight * self.imMat[y_pixel, x_pixel + 2]
-                        if 0 < x_pixel - 2:
-                            c_totVal += decayed_weight * self.imMat[y_pixel, x_pixel - 2]
+                        # Right side
+                        if x_pixel + d < self.x_pixel_width:
+                            c_totVal += weight * self.imMat[y_pixel, x_pixel + d]
+
+                        # Left side
+                        if x_pixel - d >= 0:
+                            c_totVal += weight * self.imMat[y_pixel, x_pixel - d]
+
+
 
             # print([cval,c_totVal])
             list_integrals_of_c.append([cval, c_totVal])
@@ -592,7 +609,7 @@ class Ellipse_Fit:
                 self.fitGaussian(params_Y0_A_B, cBoundsNew, plot_gauss)
 
     def optimise_ellipse(self, y0_bounds, a_bounds, b_bounds, c_bounds,
-                         plot_optimised_gaussian=False):
+                         plot_optimised_gaussian=False,iterations=30):
 
         def loss_func_cIntegral_gauss(params, sigmaWeighting_):
             # print("params", params)
@@ -617,7 +634,7 @@ class Ellipse_Fit:
 
         result = minimize(loss_func_cIntegral_gauss, initial_guess, args=(self.loss_sigma_weight,), bounds=bounds,
                           method='Nelder-Mead',
-                          callback=callbackminimise, options={'maxiter': 30})
+                          callback=callbackminimise, options={'maxiter': iterations})
 
         y0, a, b = result.x
         lossOptimised = loss_func_cIntegral_gauss(result.x, self.loss_sigma_weight)
@@ -640,22 +657,23 @@ class Ellipse_Fit:
         return params_ellipse, cPeak_unc
 
     def fit_image_lines(self, left_bounds, right_bounds,
-                        plot_optimised_gaussian=False):
+                        plot_optimised_gaussian=False,iterations=30):
 
         keys = ["left", "right"]
         dict_params = {}
 
         for key, bounds in zip(keys, [left_bounds, right_bounds]):
-            app = Append_to_file(self.log).append_and_print
-            app("-" * 30)
-            app(f"{key} Line: ")
+            if self.log is not None:
+                app = Append_to_file(self.log).append_and_print
+                app("-" * 30)
+                app(f"{key} Line: ")
             y0_bounds = bounds[0]
             a_bounds = bounds[1]
             b_bounds = bounds[2]
             c_bounds = bounds[3]
 
             params_ellipse, cPeak_unc = self.optimise_ellipse(y0_bounds, a_bounds, b_bounds, c_bounds,
-                                                              plot_optimised_gaussian)
+                                                              plot_optimised_gaussian,iterations=iterations)
             # params_ellipse is [y0,a,b,c]
 
             dict_params[key] = {"params_ellipse": params_ellipse,
@@ -899,7 +917,7 @@ def fit_ellipse(indexOfInterest, left_bounds=None, right_bounds=None,
     # ---------- Initialise Ellipse Engine and log the initialising parameters ----------
 
     cal_ellipse = Ellipse_Fit(image_mat, logFile, adjacentWeight=adjacent_pixel_weighting,
-                              extra_lineIntegral_width=pixelwidth_lineintegral_5)
+                              how_many_adjacent_pixels_each_side=3)
     app("-" * 30)
     app(f"Start: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}")
     app(f"Index of Interest {indexOfInterest}, thresholded above {howManySigma} sigma")
@@ -913,7 +931,7 @@ def fit_ellipse(indexOfInterest, left_bounds=None, right_bounds=None,
         y0_bounds = (700, 950)
         a_bounds = (6000, 8000)
         b_bounds = (6000, 8000)  # Note a_b similarity ==> encourages near circular like face
-        c_bounds = (1220, 1340)
+        c_bounds = (1220, 1360)
 
         left_bounds = [y0_bounds, a_bounds, b_bounds, c_bounds]
 
@@ -921,7 +939,7 @@ def fit_ellipse(indexOfInterest, left_bounds=None, right_bounds=None,
         y0_bounds = (700, 950)
         a_bounds = (6000, 8000)
         b_bounds = (6000, 8000)
-        c_bounds = (1380, 1460)
+        c_bounds = (1360, 1500)
 
         right_bounds = [y0_bounds, a_bounds, b_bounds, c_bounds]
 
@@ -1047,7 +1065,7 @@ def fit_geometry_to_ellipse(indexOfInterest,
                                                      Coptimised=rightvars[2], plotLines=False)
 
     else:
-        cal_ellipse = Ellipse_Fit(image_mat, None, adjacentWeight=0.5, extra_lineIntegral_width=True)
+        cal_ellipse = Ellipse_Fit(image_mat, None, adjacentWeight=0.5, how_many_adjacent_pixels_each_side=3)
         left_vars_y0ABc, right_vars_y0ABc, left_c_unc, right_c_unc = access_saved_ellipse(indexOfInterest, folderpath)
         linesMatLeft = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=left_vars_y0ABc)
         linesMatRight = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=right_vars_y0ABc, )
@@ -1415,7 +1433,7 @@ class TestPlot:
         mat_plot = image_mat
 
         cal_ellipse = Ellipse_Fit(image_mat, None, adjacentWeight=0.5,
-                                  extra_lineIntegral_width=True)
+                                  how_many_adjacent_pixels_each_side=3)
         if plot_gauss:
             params_Y0_A_B_left = left_vars_y0ABc[:-1]
             c_left = left_vars_y0ABc[-1]
@@ -1477,7 +1495,7 @@ class TestPlot:
             left_vars_y0ABc, right_vars_y0ABc, left_c_unc, right_c_unc = access_saved_ellipse(self.indexOfInterest)
 
             cal_ellipse = Ellipse_Fit(image_mat, None, adjacentWeight=0.5,
-                                      extra_lineIntegral_width=True)
+                                      how_many_adjacent_pixels_each_side=3)
 
             val_line = np.max(im_very_clear) / 4
 
@@ -1705,7 +1723,308 @@ class Violin:
         plt.show()
 
 
+    def r_cam_ellipseVSquad(self,folderpath="stored_variables"):
+
+        r_cam_ellipse = []
+        r_cam_quad = []
+
+
+        for iOI in self.list_indexOI:
+            crysPitch, CrysRoll, CamPitch, CamRoll, rcam = access_saved_geometric(iOI)
+            r_cam_ellipse.append(rcam)
+
+            index_folder = os.path.join(folderpath, str(iOI))
+            filepath = os.path.join(index_folder, "geometric_fits_usingQuad.npy")
+
+            saved_variables = np.load(filepath)
+            r_cam_quad.append(saved_variables[4])
+
+        data = [r_cam_quad,r_cam_ellipse]
+
+        plt.figure(figsize=(7, 5))
+
+        sns.violinplot(data=data,inner=None)
+        sns.swarmplot(data=data, color='k', alpha=0.5, size=6)
+        plt.ylabel(r"$|\mathbf{r_{cam}}|$ (m)")
+        plt.xticks([0, 1], ['Quadratic', 'Elliptical'])
+
+        plt.title(r"$|\mathbf{r_{cam}}|$ Fitted Using Elliptical and Quadratic Lines", fontsize=16,)
+        plt.tight_layout()
+        plt.grid(True)
+        plt.show()
+
+# -------- Create Unit Test
+
+class Geo_UnitTest:
+    def __init__(self,bounds=None):
+        if bounds is None:
+            bounds = [(-0.346, -0.3435),  # crystal pitch Bounds
+                      (0.018, 0.019),  # crystal roll Bounds
+                      (0.75, 0.85),  # Camera pitch Bounds
+                      (-0.006, -0.005),  # camera roll Bounds
+                      (0.083, 0.0841),  # rcamBounds
+                      ]
+
+        self.bounds = bounds
+
+        random_params = []
+
+        for bound in bounds:
+            rand_val = np.random.uniform(bound[0], bound[1])
+            random_params.append(rand_val)
+
+        self.random_params = random_params
+
+        geo_engine_rand = Geometry(crystal_pitch=random_params[0],crystal_roll=random_params[1],
+                                   camera_pitch=random_params[2], camera_roll=random_params[3],
+                                   r_cam=random_params[4])
+
+        self.rdm_geo_engine = geo_engine_rand
+
+    def rdm_xy_pixel_mat(self, noise_level_left=0.2,noise_level_right=0.1, testPlotRaw_noisy=False, testPlot_mat=False,phiStepSize=0.0005):
+
+        xy_meter_alpha = self.rdm_geo_engine.xy_coords_of_E(E_Lalpha_eV,phiStepSize=phiStepSize)
+        xy_meter_beta = self.rdm_geo_engine.xy_coords_of_E(E_Lbeta_eV,phiStepSize=phiStepSize)
+
+        # list of values with [ [x1,y1], [x2,y2], ]
+
+        dictLines = {}
+
+        matLines = np.zeros((length_detector_pixels,length_detector_pixels))
+
+        for list_xy,name, noise_level in zip([xy_meter_alpha,xy_meter_beta],["Alpha","Beta"],[noise_level_right,noise_level_left]):
+            xvals = []
+            yvals = []
+            for row in list_xy:
+                xvals.append(row[0])
+                yvals.append(row[1])
+
+            x_array = np.array(xvals)
+            y_array = np.array(yvals)
+
+            # Generate random noise scaled to the value range
+            x_noise = np.random.uniform(-noise_level, noise_level, size=x_array.shape) * (x_array.max() - x_array.min())
+            y_noise = np.random.uniform(-noise_level, noise_level, size=y_array.shape) * (y_array.max() - y_array.min())
+
+            noisy_x = x_array + x_noise
+            noisy_y = y_array + y_noise
+
+            noisy_x_pixel = []
+            noisy_y_pixel = []
+
+            for x_val, y_val in zip(noisy_x, noisy_y):
+
+                x_pixel,y_pixel = xy_meters_to_xyPixel(x_meters=x_val,y_meters=y_val)
+
+                # print("x,y: ", (x_pixel,y_pixel))
+
+                if x_pixel < length_detector_pixels and y_pixel < length_detector_pixels:
+
+                    matLines[y_pixel, x_pixel] = np.random.uniform(50,150)
+
+                    noisy_x_pixel.append(x_pixel)
+                    noisy_y_pixel.append(y_pixel)
+
+            if testPlotRaw_noisy:
+
+                noisy_x_pixel_array = np.array(noisy_x_pixel)
+                noisy_y_pixel_array = np.array(noisy_y_pixel)
+
+                x_pixel_array = []
+                y_pixel_array = []
+
+                for x_val,y_val in zip(x_array, y_array):
+                    x_pixel, y_pixel = xy_meters_to_xyPixel(x_meters=x_val, y_meters=y_val)
+                    x_pixel_array.append(x_pixel)
+                    y_pixel_array.append(y_pixel)
+
+                plt.scatter(np.array(x_pixel_array), np.array(y_pixel_array), label='Original', s=5)
+                plt.scatter(noisy_x_pixel_array, noisy_y_pixel_array, label='Noisy', s=5)
+                plt.legend()
+                plt.show()
+
+
+            dictLines[name] = {
+                "arr_x_noise": noisy_x,
+                "arr_y_noise": noisy_y
+            }
+
+        if testPlot_mat:
+            plt.imshow(matLines)
+            plt.show()
+
+
+        return matLines
+
+    @staticmethod
+    def pedestal_thresholded_mat(index_mat_sigma=11,how_many_sigma=2):
+        meanPedestal, sigmaPedestal = pedestal_mean_sigma_awayFromLines(imMatrix=loadData()[index_mat_sigma],indexOfInterest=index_mat_sigma)
+        ped_mat = generate_pedestal_mat(sigma=2*sigmaPedestal,x0=0)
+
+        # Mirroring the double thresholding
+        ped_mat_thresholded = np.where(ped_mat > how_many_sigma *sigmaPedestal,ped_mat,0)
+
+        return ped_mat_thresholded
+
+    def UnitTest_mat(self,noise_level_left=0.2,noise_level_right=0.1,index_mat_sigma=11,testPlot_mat=False,how_many_sigma=2,
+                     phi_step_size=0.0005):
+
+        rdm_mat = self.rdm_xy_pixel_mat(noise_level_left,noise_level_right,phiStepSize=phi_step_size)
+        ped_mat = self.pedestal_thresholded_mat(index_mat_sigma,how_many_sigma)
+
+        unit_test_mat = rdm_mat + ped_mat
+
+        if testPlot_mat:
+            plt.imshow(unit_test_mat)
+            plt.title(f"Unit Test for Geometry Fitting\nLeft Noise Level = {noise_level_left}; Right Noise Level = {noise_level_right}; Phi Step Size = {phi_step_size}")
+            plt.show()
+
+        return unit_test_mat
+
+
+    def correct_line_xyCoords(self,energy_line_eV):
+        xy_pixel = self.rdm_geo_engine.xy_pixelCoords_of_E(energy_line_eV)
+        x_coords_pixel = []
+        y_coords_pixel = []
+        for row in xy_pixel:
+            x_pixel = row[0]
+            y_pixel = row[1]
+
+            if x_pixel < length_detector_pixels and y_pixel < length_detector_pixels:
+                x_coords_pixel.append(x_pixel)
+                y_coords_pixel.append(y_pixel)
+
+        return np.array(x_coords_pixel), np.array(y_coords_pixel)
+
+
+def test_geo_fitting(noise_level_left=0.05,noise_level_right=0.025,phi_step_size=0.0003,
+                     left_bounds_ellipse=None, right_bounds_ellipse=None,
+                     initialGuess=None,
+                     plot_comparison=True):
+
+    geo_ut = Geo_UnitTest()
+    ut_mat = geo_ut.UnitTest_mat(noise_level_left,noise_level_right,phi_step_size=phi_step_size)
+
+    cal_ellipse = Ellipse_Fit(ut_mat, logTextFile=None, adjacentWeight=0.5,
+                              how_many_adjacent_pixels_each_side=3)
+
+    if left_bounds_ellipse is None:
+        y0_bounds = (700, 950)
+        a_bounds = (6000, 8000)
+        b_bounds = (6000, 8000)  # Note a_b similarity ==> encourages near circular like face
+        c_bounds = (1220, 1360)
+
+        left_bounds_ellipse = [y0_bounds, a_bounds, b_bounds, c_bounds]
+
+    if right_bounds_ellipse is None:
+        y0_bounds = (700, 950)
+        a_bounds = (6000, 8000)
+        b_bounds = (6000, 8000)
+        c_bounds = (1360, 1500)
+
+        right_bounds_ellipse = [y0_bounds, a_bounds, b_bounds, c_bounds]
+
+    params_dict_ = cal_ellipse.fit_image_lines(left_bounds=left_bounds_ellipse, right_bounds=right_bounds_ellipse,
+                                               plot_optimised_gaussian=False,iterations=20)
+    left_params = params_dict_["left"]["params_ellipse"]
+    right_params = params_dict_["right"]["params_ellipse"]
+
+    linesMatLeft = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=left_params)
+    linesMatRight = cal_ellipse.fitted_lines_image_matrix(optimised_ellipse_params=right_params, )
+
+    def lossFunction(params_):
+        p = params_
+
+        geo = Geometry(crystal_pitch=p[0], crystal_roll=p[1],
+                       camera_pitch=p[2], camera_roll=p[3],
+                       r_cam=p[4], )
+
+        alphaLineCoords_pixel = geo.xy_pixelCoords_of_E(E_Lalpha_eV)  # More Right / right line
+        betaLineCoords_pixel = geo.xy_pixelCoords_of_E(E_Lbeta_eV)  # More Left / left line
+
+        def computeLossNew():
+            loss_to_be_minimised = 0
+
+            left = [betaLineCoords_pixel, linesMatLeft]
+            right = [alphaLineCoords_pixel, linesMatRight]
+
+            for pixel_mat_list in [left, right]:
+                geometric_line_pixels = pixel_mat_list[0]
+                linesMat = pixel_mat_list[1]
+
+                for row in geometric_line_pixels:
+                    x_pixel = row[0]
+                    y_pixel = row[1]
+
+                    # now we want to find the pixel distance
+                    # Finding the indices in the given row that are non-zero
+                    nonzero_indices = np.nonzero(linesMat[y_pixel])[0]
+                    mean_position = np.mean(nonzero_indices)
+
+                    difference = abs(x_pixel - mean_position)
+
+                    # print("y_pixel", y_pixel, "x_pixel", x_pixel)
+                    # print("nonzero_indices", nonzero_indices)
+                    # print("mean_position", mean_position)
+                    # print(difference)
+
+                    loss_to_be_minimised += difference
+
+            return loss_to_be_minimised
+
+        # We wish to maximise the integral along these lines
+        loss = computeLossNew()
+
+        return loss
+
+    if initialGuess is None:
+        initialGuess = np.array([-0.3445,  # crystal pitch
+                                 0.0184,  # crystal roll
+                                 0.814,  # Camera pitch, pi/4 is
+                                 -0.00537,  # camera roll
+                                 0.0839  # r camera
+                                 ])
+
+    result = minimize(lossFunction, initialGuess, bounds=geo_ut.bounds, method='Nelder-Mead', options={'maxiter': 20},
+                      callback=callbackminimise)
+
+    optimisedParams = result.x
+
+    print("Random Params: ", geo_ut.random_params)
+    print("Fitted Params: ", optimisedParams)
+
+    geoOptimised = Geometry(crystal_pitch=optimisedParams[0], crystal_roll=optimisedParams[1],
+                            camera_pitch=optimisedParams[2], camera_roll=optimisedParams[3],
+                            r_cam=optimisedParams[4], )
+    geo_x_coords_alpha,geo_y_coords_alpha = geoOptimised.line_xyCoords(E_Lalpha_eV)
+    geo_x_coords_beta, geo_y_coords_beta = geoOptimised.line_xyCoords(E_Lbeta_eV)
+    ut_x_coords_alp,ut_y_coords_alp = geo_ut.correct_line_xyCoords(E_Lalpha_eV)
+    ut_x_coords_bet, ut_y_coords_bet = geo_ut.correct_line_xyCoords(E_Lbeta_eV)
+
+    if plot_comparison:
+        plt.imshow(ut_mat)
+        plt.plot(geo_x_coords_alpha, geo_y_coords_alpha, color="red", linewidth=2, linestyle="--",label="Fitted Line (Alpha)",alpha=0.8)
+        plt.plot(geo_x_coords_beta, geo_y_coords_beta, color="red", linewidth=2, linestyle="-",label="Fitted Line (Beta)",alpha=0.5)
+        plt.plot(ut_x_coords_bet, ut_y_coords_bet, color="blue", linewidth=2, linestyle="--", label="Unit Test Line (Beta)",alpha=0.8)
+        plt.plot(ut_x_coords_alp, ut_y_coords_alp, color="blue", linewidth=2, linestyle="-", label="Unit Test Line (Alpha)",alpha=0.5)
+        plt.legend()
+        plt.title(f"Unit Test for Geometrical Fitting Engine\nLeft Noise Level = {noise_level_left}; Right Noise Level = {noise_level_right}; Phi Step Size = {phi_step_size}")
+        plt.ylabel("i index")
+        plt.xlabel("j index")
+        plt.show()
+
+
 if __name__ == '__main__':
+
+    def geo_unit_test_tests():
+        geo_utest = Geo_UnitTest()
+        ut_mat_ = geo_utest.UnitTest_mat(testPlot_mat=True,noise_level_left=0.05,noise_level_right=0.025,phi_step_size=0.0003)
+
+
+    # geo_unit_test_tests()
+
+    test_geo_fitting()
+
     def calibrate_all(list_indices=list_data, folder_path="stored_variables"):
 
         cal = Calibrate(list_indices,folder_path)
@@ -1721,7 +2040,15 @@ if __name__ == '__main__':
         # cal.calibrate_geometric_usingQuad()
         cal.calibrate_quadratic()
 
-    calibrate_oneType()
+    # calibrate_oneType()
+
+    def plotAllGeometryLines(list_indices=list_data, folder_path="stored_variables"):
+        print("plotAllGeometryLines")
+        for index_ in list_indices:
+            testPlot = TestPlot(index_,2)
+            testPlot.testPlotGeometryLines()
+
+    # plotAllGeometryLines()
 
     # calibrate_all()
 
