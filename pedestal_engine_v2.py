@@ -222,6 +222,14 @@ def mat_minusMean_thr_aboveNsigma(index_of_interest, how_many_sigma, ):
     return mat_minusMean, thr
 
 
+def mat_min_mean_thr_above_Nsigma2(matrix,mean,sigma,n_sigma):
+    mat_minusMean = matrix.astype(np.int16) - mean
+    mat_minusMean[mat_minusMean < 0] = 0
+
+    mat_minusMean_thr = np.where(mat_minusMean > n_sigma*sigma, mat_minusMean, 0)
+
+    return mat_minusMean_thr
+
 def matMinusMean(index_of_interest):
     image_mat = loadData()[index_of_interest]
     # ----------pedestal mean and sigma----------

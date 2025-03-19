@@ -15,7 +15,8 @@ class Spectrum:
                  no_photon_adu_thr=80, sp_adu_thr=150, adu_offset=40, adu_cap=1600,
                  removeTopRows=0,
                  how_many_sigma=2,
-                 folderpath="stored_variables"):
+                 folderpath="stored_variables",
+                 spectrumTitle=None):
 
         if geo_engine is None:
             geo_engine = geo_engine_withSavedParams(indexOfInterest)
@@ -62,25 +63,25 @@ class Spectrum:
 
         self.folderpath = folderpath
 
-
-    def multiPixel_island(self, bin_width=1,
-                          spectrumTitle=None,
-                          plotSpectrum=False, logarithmic=False,
-                          intensity_arb_unit=False,
-                          row_separate=0,
-                          save=True):
-
         if spectrumTitle is None:
             howManySigmaTitle = f'\nConsidering values {self.how_many_sigma} above the mean'
             thresholds_title1 = f'\nAcceptance Region: {self.noP_thresh} < ADU total < {self.adu_cap}'
             thresholds_title2 = f'\nSingle Photon ADU = {self.sp_thresh} with allowed offset = {self.adu_offset}'
             spectrumTitle = f"Photon Energy Spectrum for image {self.indexOfInterest}" + howManySigmaTitle + thresholds_title1 + thresholds_title2
 
-        spc_engine = PhotonCounting(indexOfInterest=self.indexOfInterest,
-                                    no_photon_adu_thr=self.noP_thresh, sp_adu_thr=self.sp_thresh,
-                                    adu_cap=self.adu_cap, adu_offset=self.adu_offset,
-                                    removeRows0To_=self.removeTopRows,
-                                    howManySigma_thr=self.how_many_sigma, )
+        self.spectrumTitle = spectrumTitle
+
+
+    def multiPixel_island(self, bin_width=1,
+                          plotSpectrum=False, logarithmic=False,
+                          intensity_arb_unit=False,
+                          save=True):
+
+        spc_engine = Island_PhotonCounting(indexOfInterest=self.indexOfInterest,
+                                           no_photon_adu_thr=self.noP_thresh, sp_adu_thr=self.sp_thresh,
+                                           adu_cap=self.adu_cap, adu_offset=self.adu_offset,
+                                           removeRows0To_=self.removeTopRows,
+                                           howManySigma_thr=self.how_many_sigma, )
         bragg_engine = Bragg(crystal_pitch=self.crys_pitch, crystal_roll=self.crys_roll,
                              camera_pitch=self.cam_pitch, camera_roll=self.cam_roll,
                              r_camera_spherical=self.r_cam_spherical)
@@ -90,25 +91,10 @@ class Spectrum:
         # The first 3 columns have vertical lines that are due to edge effects
         moI[:, 0:3] = 0
 
-        if row_separate != 0:
-            moI_Top = moI[0:row_separate, :]
-            moI_Top_above2sigma = np.where(moI_Top > 2 * spc_engine.sigmaPedestal, moI_Top, 0)
 
-            moI_bottom = moI[row_separate:, :]
-
-            results_island_dict_top = spc_engine.operateOnIslands(moI_Top_above2sigma)
-            island_list_Cij_top = results_island_dict_top["list_countij"]
-            energyList_islands_top = self.lists_energy(island_list_Cij_top, braggEngine_init=bragg_engine)
-
-            results_island_dict_bot = spc_engine.operateOnIslands(moI_bottom)
-            island_list_Cij_bot = results_island_dict_bot["list_countij"]
-            energyList_islands = self.lists_energy(island_list_Cij_bot, braggEngine_init=bragg_engine)
-
-            energyList_islands.extend(energyList_islands_top)
-        else:
-            results_island_dict = spc_engine.operateOnIslands(moI)
-            island_list_Cij = results_island_dict["list_countij"]
-            energyList_islands = self.lists_energy(island_list_Cij, braggEngine_init=bragg_engine)
+        results_island_dict = spc_engine.operateOnIslands(moI)
+        island_list_Cij = results_island_dict["list_countij"]
+        energyList_islands = self.lists_energy(island_list_Cij, braggEngine_init=bragg_engine)
 
         if save:
             index_folder = os.path.join(self.folderpath, str(self.indexOfInterest))
@@ -117,29 +103,39 @@ class Spectrum:
             np.save(os.path.join(index_folder, fileName), array_Elist)
 
         if plotSpectrum:
-            self.plotSpectrum(energyList_islands, bin_width, spectrumTitle, intensity_arb_unit, logarithmic)
+            self.plotSpectrum(energyList_islands, bin_width, self.spectrumTitle, intensity_arb_unit, logarithmic)
 
         return energyList_islands, moI
 
     def shapeSearchEfficient(self):
 
-        PhotonCounting(indexOfInterest=self.indexOfInterest,
-                       no_photon_adu_thr=self.noP_thresh, sp_adu_thr=self.sp_thresh,
-                       adu_cap=self.adu_cap, adu_offset=self.adu_offset,
-                       removeRows0To_=self.removeTopRows,
-                       howManySigma_thr=self.how_many_sigma, )
+        Island_PhotonCounting(indexOfInterest=self.indexOfInterest,
+                              no_photon_adu_thr=self.noP_thresh, sp_adu_thr=self.sp_thresh,
+                              adu_cap=self.adu_cap, adu_offset=self.adu_offset,
+                              removeRows0To_=self.removeTopRows,
+                              howManySigma_thr=self.how_many_sigma, )
         bragg_engine = Bragg(crystal_pitch=self.crys_pitch, crystal_roll=self.crys_roll,
                              camera_pitch=self.cam_pitch, camera_roll=self.cam_roll,
                              r_camera_spherical=self.r_cam_spherical)
 
+    def singlePixel(self,bin_width):
+        singlePixel_eng = SinglePixel(self.indexOfInterest,self.how_many_sigma)
+        bragg_engine = Bragg(crystal_pitch=self.crys_pitch, crystal_roll=self.crys_roll,
+                             camera_pitch=self.cam_pitch, camera_roll=self.cam_roll,
+                             r_camera_spherical=self.r_cam_spherical)
+
+        list_countij = singlePixel_eng.photon_count(no_photon_adu_thr=self.noP_thresh, sp_adu_thr=self.sp_thresh,
+                                                    adu_offset=self.adu_offset, adu_cap=self.adu_cap)
 
 
+        e_List = self.lists_energy(list_countij, braggEngine_init=bragg_engine)
+
+        self.plotSpectrum_v2_solidAng(e_List,bin_width,self.spectrumTitle,)
 
     @staticmethod
-    def plotSpectrum(energyList, bin_wdith, spectrumTitle, intensity_arb_unit=False, logarithmic=False):
+    def plotSpectrum(energyList, bin_width, spectrumTitle, intensity_arb_unit=False, logarithmic=False,):
 
-        # energyBins = np.arange(min(energyList), max(energyList) + bin_wdith, bin_wdith)
-        energyBins = np.arange(1000, 1700 + bin_wdith, bin_wdith)
+        energyBins = np.arange(1000, 1000+(700 // bin_width + 1) * bin_width, bin_width)
 
         photonEnergies = np.array(energyList)
         count, bins_edges = np.histogram(photonEnergies, energyBins)
@@ -166,6 +162,56 @@ class Spectrum:
         plt.grid(True)
         plt.show()
 
+
+    def plotSpectrum_v2_solidAng(self,energyList, bin_width, spectrumTitle,
+                        intensity_arb_unit=True, logarithmic=False,):
+
+        index_folder = os.path.join(self.folderpath, str(self.indexOfInterest))
+        bin_solid_angle_filepath = os.path.join(index_folder, f"solid_angle_of_binwidth_{bin_width}.npy")
+
+        energyBins = np.arange(1000, 1000+(700 // bin_width + 1) * bin_width, bin_width)
+
+        # create Array of solid A
+        if not os.path.exists(bin_solid_angle_filepath):
+
+            arr_solid = solid_angle_array(self.indexOfInterest, bin_width,folderpath=self.folderpath,plotDistribtion=True,
+                                          save=True)
+
+        else:
+            arr_solid = np.load(bin_solid_angle_filepath)
+
+        photonEnergies = np.array(energyList)
+        counts, bins_edges = np.histogram(photonEnergies, energyBins)
+
+        # Find bin centers
+        bin_centers = (bins_edges[:-1] + bins_edges[1:]) / 2
+
+        sa_norm_count = []
+        for solid_ang,count in zip(arr_solid, counts):
+            sa_norm_count.append(count/solid_ang)
+
+        arr_norm_counts = np.array(sa_norm_count)
+
+        plt.figure(figsize=(10, 6))
+        if intensity_arb_unit:
+            countIntensity = []
+            for countE, center in zip(arr_norm_counts, bin_centers):
+                countIntensity.append(countE * center)
+            countIntensity = np.array(countIntensity)
+            plt.plot(bin_centers, countIntensity, linestyle='-', color='b')
+            plt.ylabel('Intensity (arb. unit)')
+
+        else:
+            plt.plot(bin_centers, arr_norm_counts, linestyle='-', color='b')
+            plt.ylabel('Count')
+        plt.xlabel('Energy')
+        plt.title(spectrumTitle)
+        if logarithmic:
+            plt.yscale('log')
+        plt.grid(True)
+        plt.show()
+
+
     @staticmethod
     def lists_energy(list_countij, braggEngine_init):
         energyList = []
@@ -187,7 +233,7 @@ class Spectrum:
     def islandSpectrum_SolidAngle_with_uncertainty(self,bin_width=1,save=True, diagnosticPrint=False):
         energyList_islands, _ = self.multiPixel_island(bin_width=bin_width, plotSpectrum=False)
 
-        energyBins = np.arange(1000, 1700 + bin_width, bin_width)
+        energyBins = np.arange(1000, 1000+(700 // bin_width + 1) * bin_width, bin_width)
         photonEnergies = np.array(energyList_islands)
         count_array, bin_edges = np.histogram(photonEnergies, energyBins)
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
@@ -395,7 +441,7 @@ def dict_ij_perEnergyBin(index_of_interest, bin_width=1, folderpath="stored_vari
     energy_filepath = os.path.join(index_folder, "energy_of_pixel.npy")
     energy_of_pixelMat = np.load(energy_filepath)
 
-    energyBands = np.arange(1000, 1700 + bin_width, bin_width)
+    energyBands = np.arange(1000, 1000+(700 // bin_width + 1) * bin_width, bin_width)
 
     dict_bin_indices = {}
     for i in range(len(energyBands) - 1):
@@ -471,10 +517,62 @@ def solid_angle_per_energy_bin(index_of_interest, bin_width=1, folderpath="store
 
     return solid_angle_df
 
+def solid_angle_array(index_of_interest, bin_width=1, folderpath="stored_variables",
+                               plotDistribtion=False, save=True):
+    print("-" * 30)
+    print("Creating dictionary of total Solid Angle captured for each bin")
+    print("Start:", time.strftime("%H:%M:%S", time.localtime()))
+    dict_ij_perBin = dict_ij_perEnergyBin(index_of_interest, bin_width=bin_width, folderpath=folderpath)
+
+    index_folder = os.path.join(folderpath, str(index_of_interest))
+    solidAngle_filepath = os.path.join(index_folder, "solid_angle_of_pixel.npy")
+    solidAng_mat = np.load(solidAngle_filepath)
+
+    energy_bins = np.arange(1000, 1000+(700 // bin_width + 1) * bin_width, bin_width)
+    # print(energy_bins)
+    arr_solidAng = np.zeros(len(energy_bins)-1)
+
+    for (lower_bound, upper_bound), list_ij in dict_ij_perBin.items():
+        totalSolidAngle = 0
+
+        for i_idx, j_idx in list_ij:
+            totalSolidAngle += solidAng_mat[i_idx, j_idx]
+
+        # Find the index corresponding to lower_bound
+        # bin_idx = np.where(energy_bins == lower_bound)[0][0]
+        bin_idx = np.where(energy_bins == lower_bound)[0]
+
+        # Store totalSolidAngle in the correct bin index
+        arr_solidAng[bin_idx] = totalSolidAngle
+
+    print("Finish:", time.strftime("%H:%M:%S", time.localtime()))
+
+    if save:
+        bin_solid_angle_filepath = os.path.join(index_folder, f"solid_angle_of_binwidth_{bin_width}.npy")
+        np.save(bin_solid_angle_filepath, arr_solidAng)
+
+    if plotDistribtion:
+        bin_centers = (energy_bins[:-1] + energy_bins[1:]) / 2
+
+        # Plot
+        plt.figure(figsize=(8, 5))
+        plt.plot(bin_centers, arr_solidAng, marker='o', linestyle='-', color='b', label="Total Solid Angle")
+        plt.xlabel("Energy Bin Center (eV)")
+        plt.ylabel("Total Solid Angle")
+        plt.title("Distribution of Solid Angle")
+        plt.grid(True, linestyle="--", alpha=0.7)
+        plt.legend()
+        plt.show()
+
+    return arr_solidAng
+
+
 
 def collect_savedSpectrums(bin_width=1, list_indices=list_data, folderpath="stored_variables",save=True):
+    topBin_dif = 700
+    topBin_dif_binWidth_rounded = 700 // bin_width
 
-    energyBins = np.arange(1000, 1700 + bin_width, bin_width)
+    energyBins = np.arange(1000, (topBin_dif_binWidth_rounded + 1) * bin_width, bin_width)
     bin_centers = (energyBins[:-1] + energyBins[1:]) / 2
 
     dict_counts = {}
@@ -651,6 +749,18 @@ if __name__ == "__main__":
             plot_individual_Saved_spec(index_OI)
 
 
+    def singlePixel_spec(indexOI):
+        print("singlePixel_spec")
+        spectrum = Spectrum(indexOI, removeTopRows=0,
+                            how_many_sigma=2, no_photon_adu_thr=80, sp_adu_thr=150, adu_offset=40, adu_cap=1600,
+                            )
+        spectrum.singlePixel(bin_width=1)
+
+
+    singlePixel_spec(11)
+
+
+
     # plot_all_individual_spectrums()
 
     # generate_all_individual_spectrums()
@@ -658,7 +768,7 @@ if __name__ == "__main__":
     # collect_savedSpectrums()
     # plot_total_spectrum()
 
-    check_spec(11,testPrint=True,remove_top_rows=0)
+    # check_spec(11,testPrint=True,remove_top_rows=0)
 
     # printSaved_spec(11,)
 
