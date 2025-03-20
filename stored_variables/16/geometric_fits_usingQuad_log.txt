@@ -1,0 +1,41 @@
+
+------------------------------
+2025-03-16 09:03:04
+crystal pitch bounds = (-0.346, -0.343), crystal roll bounds = (0.018, 0.019)
+camera pitch bounds = (0.75, 0.85), camera roll bounds = (-0.006, -0.005)
+rcamBounds = (0.083, 0.086)
+Initial Guess = [-0.3445   0.0184   0.814   -0.00537  0.0839 ]
+r_thetaval = 2.567
+how many sigma = 2
+weight_ofsettedPoints = 0.5
+iterations = 30
+New loss method: True
+------------------------------
+2025-03-16 09:05:10
+optimised crystal pitch = -0.3454433323294178, n crystal roll = 0.01872512131464798
+optimised camera pitch = 0.7856470883660633, n camera roll = -0.005030018074386387
+optimised rcam spherical = [0.08390562 2.567      3.14159265]
+Optimised n crystal = [-0.33861385 -0.01761791  0.94076047]
+Optimised n camera = [0.70728278 0.00355586 0.7069218 ]
+Optimised r camera = [0.08390562 2.567      3.14159265]
+Loss = 9315.0
+------------------------------
+2025-03-16 11:09:17
+crystal pitch bounds = (-0.346, -0.343), crystal roll bounds = (0.018, 0.019)
+camera pitch bounds = (0.75, 0.85), camera roll bounds = (-0.006, -0.005)
+rcamBounds = (0.083, 0.086)
+Initial Guess = [-0.3445   0.0184   0.814   -0.00537  0.0839 ]
+r_thetaval = 2.567
+how many sigma = 2
+weight_ofsettedPoints = 0.5
+iterations = 30
+New loss method: True
+------------------------------
+2025-03-16 11:14:06
+optimised crystal pitch = -0.3454433323294178, n crystal roll = 0.01872512131464798
+optimised camera pitch = 0.7856470883660633, n camera roll = -0.005030018074386387
+optimised rcam spherical = [0.08390562 2.567      3.14159265]
+Optimised n crystal = [-0.33861385 -0.01761791  0.94076047]
+Optimised n camera = [0.70728278 0.00355586 0.7069218 ]
+Optimised r camera = [0.08390562 2.567      3.14159265]
+Loss = 9315.0

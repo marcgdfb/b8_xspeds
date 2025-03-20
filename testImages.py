@@ -117,6 +117,28 @@ class TestImages:
         return mat8[topleft[0]:bottomright[0], topleft[1]:bottomright[1]]
 
     @staticmethod
+    def image8_cluster_reduced_edited_moreDifficult():
+        mat8, thr = mat_minusMean_thr_aboveNsigma(8, how_many_sigma=2)
+
+        topleft = (636, 1419)
+        bottomright = (650, 1427)
+
+        matOI = mat8[topleft[0]:bottomright[0], topleft[1]:bottomright[1]]
+
+        # making some adjustments to add the island together:
+        matOI[7,1] = 20
+        matOI[9,1] = 20
+        matOI[4,5] = 20
+        matOI[6,3] = 20
+        matOI[2,2] = 20
+
+        # Now making a double photon hit on one pixel
+        matOI[6,1] = 200
+
+        # The indexing here is just to make sure it's just the island for ease
+        return matOI[1:13,1:7]
+
+    @staticmethod
     def image8_cluster_reducedScheme2():
 
         mat8, thr = mat_minusMean_thr_aboveNsigma(8,how_many_sigma=2)
@@ -181,14 +203,16 @@ class SPC_Train_images:
 
         return clusterMat
 
-    def createTestData(self,fillfraction=0.1, matrix_size=(100, 100), mean_adu=150, std_adu=30,
-                       returnJustImage=False,seed=None,addAnomaly=True ):
+    def createTestData(self,fillfraction=0.1, matrix_size=(100, 100), mean_adu=150, std_adu=30, seed=None,
+                       addAnomaly=True,return_mat_with_exact_hits=False):
+        print("Creating Test Data")
 
         num_photons = int(matrix_size[0] * matrix_size[1] * fillfraction)
         if seed is not None:
             np.random.seed(seed)
 
         image = np.zeros(matrix_size, dtype=float)
+        photon_hits_mat = np.zeros(matrix_size, dtype=float)
         noise_mat = generate_pedestal_mat(self.ped_sigma,x0=0,nrows=matrix_size[0],ncols=matrix_size[1])
 
         # For reproducibility in tests, you might set a random seed outside this function if desired.
@@ -196,30 +220,36 @@ class SPC_Train_images:
             [(0, 0)],  # Single pixel
             [(0, 0)],  # Single pixel (again so we don't over favour the others)
             [(0, 0), (0, 1)],  # Adjacent horizontally
+            [(0, 0), (0, -1)],
             [(0, 0), (1, 0)],  # Adjacent vertically
+            [(0, 0), (-1, 0)],  # Adjacent vertically
             [(0, 0), (0, 1), (1, 0)],  # L-shape 1
-            [(0, 0), (0, 1), (1, 1)],  # L-shape 2
-            [(0, 0), (1, 1), (1, 0)],  # L-shape 3
-            [(0, 1), (1, 1), (1, 0)],  # L-shape 4
-            [(0, 0), (0, 1), (1, 0), (1, 1)],  # Square spread
-            [(0, 0), (0, 1), (1, 0), (1, 1)]  # Square spread (again)
+            [(0, 0), (0, 1), (-1, 0)],  # L-shape 2
+            [(0, 0), (0, -1), (-1, 0)],  # L-shape 3
+            [(0, 0), (1, 0), (0, -1)],  # L-shape 4
+            [(0, 0), (0, -1), (1, 0), (1, -1)],  # Square spread
+            [(0, 0), (0, 1), (-1, 0), (-1, 1)]  # Square spread (again)
         ]
         weights = [
             [1.0],  # Single pixel
             [1.0],  # Single pixel
             [0.7, 0.3],  # Adjacent horizontally
+            [0.7, 0.3],
             [0.7, 0.3],  # Adjacent vertically
+            [0.7, 0.3],
             [0.6, 0.2, 0.2],  # L-shape 1, brightest at top corner
-            [0.2, 0.6, 0.2],  # L-shape 2,
-            [0.2, 0.2, 0.6],  # L-shape 3,
-            [0.2, 0.6, 0.2],  # L-shape 4,
+            [0.6, 0.2, 0.2],  # L-shape 2,
+            [0.6, 0.2, 0.2],  # L-shape 3,
+            [0.6, 0.2, 0.2],  # L-shape 4,
             [0.4, 0.3, 0.2, 0.1],  # Square spread, brightest at top-left
-            [0.1, 0.3, 0.2, 0.4]  # Square spread, brightest at bottom right
+            [0.4, 0.3, 0.2, 0.1],  # Square spread, brightest at bottom right
         ]
         for _ in range(num_photons):
             # Choose random base pixel
             base_x = np.random.randint(0, matrix_size[0])
             base_y = np.random.randint(0, matrix_size[1])
+
+            photon_hits_mat[base_y,base_x] += 1
 
             # Choose a spread pattern
             pattern_index = np.random.randint(0, len(spread_patterns))
@@ -233,25 +263,35 @@ class SPC_Train_images:
             for (dx, dy), weight in zip(pattern, normalized_weights):
                 x = np.clip(base_x + dx, 0, matrix_size[0] - 1)
                 y = np.clip(base_y + dy, 0, matrix_size[1] - 1)
-                image[x, y] += adu_signal * weight
+                image[y, x] += adu_signal * weight
 
         imageWithNoise = image + noise_mat
         imageWithNoise = np.where(imageWithNoise > 2*self.ped_sigma,imageWithNoise,0)
 
-        if returnJustImage:
-            return image
-        elif addAnomaly:
-            anomalyMat = self.anomalyData()
-
-            if matrix_size == (2048,2048):
-                imageWithNoise[1392:1401, 1754:1762] = anomalyMat
+        if return_mat_with_exact_hits:
+            if not addAnomaly:
+                return imageWithNoise, photon_hits_mat
             else:
-                imageWithNoise[72:81,54:62] = anomalyMat
+                anomalyMat = self.anomalyData()
 
-            return imageWithNoise
+                if matrix_size == (2048,2048):
+                    imageWithNoise[1392:1401, 1754:1762] = anomalyMat
+                else:
+                    imageWithNoise[72:81,54:62] = anomalyMat
 
+                return imageWithNoise, photon_hits_mat
         else:
-            return imageWithNoise
+            if not addAnomaly:
+                return imageWithNoise
+            else:
+                anomalyMat = self.anomalyData()
+
+                if matrix_size == (2048, 2048):
+                    imageWithNoise[1392:1401, 1754:1762] = anomalyMat
+                else:
+                    imageWithNoise[72:81, 54:62] = anomalyMat
+
+                return imageWithNoise
 
 
 def test_createTestData(fillFraction=0.1, matrix_size=(100, 100), mean_adu=150, std_adu=10,

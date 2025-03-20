@@ -1483,11 +1483,11 @@ class TestPlot:
         title_l3 = f"\ncamera: Pitch = {CamPitch:.5g}, Roll = {CamRoll:.5g}"
         title_l4 = f"\nr_camera = {rcam:.5g}"
 
-        plt.imshow(imMatVeryClear + geolinesMat, cmap="hot")
-        plt.title(title_l1 + title_l2 + title_l3 + title_l4)
-        plt.show()
+        # plt.imshow(imMatVeryClear + geolinesMat, cmap="hot")
+        # plt.title(title_l1 + title_l2 + title_l3 + title_l4)
+        # plt.show()
 
-        plt.imshow(image_mat + geolinesMat, cmap="hot")
+        plt.imshow(image_mat + geolinesMat, cmap="jet")
         plt.title(title_l1 + title_l2 + title_l3 + title_l4)
         plt.show()
 
@@ -1514,8 +1514,10 @@ class TestPlot:
         mat_Energy = np.load(energy_filepath)
 
         plt.imshow(mat_Energy, cmap='jet')
-        plt.title(f"Image {self.indexOfInterest} Energy Mapping of CCD image Plane")
+        plt.title(f"Image {self.indexOfInterest}: Energy Mapping of CCD image Plane")
         plt.colorbar(label="Energy (eV)")
+        plt.xlabel("j index")
+        plt.ylabel("i index")
         plt.show()
 
     def plot_solidAngle_mats(self, folderpath="stored_variables"):
@@ -2016,6 +2018,8 @@ def test_geo_fitting(noise_level_left=0.05,noise_level_right=0.025,phi_step_size
 
 if __name__ == '__main__':
 
+    TestPlot(8,2).plot_energy_mats()
+
     def geo_unit_test_tests():
         geo_utest = Geo_UnitTest()
         ut_mat_ = geo_utest.UnitTest_mat(testPlot_mat=True,noise_level_left=0.05,noise_level_right=0.025,phi_step_size=0.0003)
@@ -2023,7 +2027,7 @@ if __name__ == '__main__':
 
     # geo_unit_test_tests()
 
-    test_geo_fitting()
+    # test_geo_fitting()
 
     def calibrate_all(list_indices=list_data, folder_path="stored_variables"):
 

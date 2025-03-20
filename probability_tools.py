@@ -79,6 +79,11 @@ def generate_pedestal_mat(sigma, x0=0, nrows=2048, ncols=2048):
     return matGauss
 
 
+
+
+
+
+
 if __name__ == "__main__":
 
     def test_probabilityOfStructures():

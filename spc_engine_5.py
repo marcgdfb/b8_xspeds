@@ -4,12 +4,14 @@ import os
 import time
 from tools import *
 
-def spc_folder(folderpath_,index_of_interest_):
+
+def spc_folder(folderpath_, index_of_interest_):
     index_folder = os.path.join(folderpath_, str(index_of_interest_))
     spc_folderpath = os.path.join(index_folder, "spc")
     if not os.path.exists(spc_folderpath):
         os.makedirs(spc_folderpath)
     return spc_folderpath
+
 
 def check_diagonals(convolvedArea, shape_kernel, check_mask):
     pattern_mask = (shape_kernel == 1)
@@ -25,8 +27,9 @@ def check_diagonals(convolvedArea, shape_kernel, check_mask):
     else:
         return False
 
+
 class SinglePixel:
-    def __init__(self, indexOfInterest,how_many_sigma=3):
+    def __init__(self, indexOfInterest, how_many_sigma=3):
         self.indexOfInterest = indexOfInterest
 
         mat_minusMean, thr = mat_minusMean_thr_aboveNsigma(indexOfInterest, how_many_sigma)
@@ -35,8 +38,6 @@ class SinglePixel:
         self.rowNum = self.imMat.shape[0]
         self.colNum = self.imMat.shape[1]
         self.image_binary = np.where(self.imMat > 0, 1, 0)
-
-
 
     def find_single_pixel_ADU(self):
 
@@ -87,7 +88,6 @@ class SinglePixel:
 
                     list_adu.append(singlePixelVal)
 
-
         return list_adu
 
     def findSingle_pixel_ADU_no_diagonal(self):
@@ -114,7 +114,7 @@ class SinglePixel:
 
         return list_adu
 
-    def photon_count(self,no_photon_adu_thr=80, sp_adu_thr=150,adu_offset=40, adu_cap=1600):
+    def photon_count(self, no_photon_adu_thr=80, sp_adu_thr=150, adu_offset=40, adu_cap=1600):
 
         list_count_ij = []
         num_rejected = 0
@@ -176,14 +176,14 @@ class SinglePixel:
                         numPhotons = 1
                         count_photons += numPhotons
 
-                    list_count_ij.append([numPhotons,i+1,j+1])
+                    list_count_ij.append([numPhotons, i + 1, j + 1])
 
         print("Number of Single Pixel Hits Rejected: ", num_rejected)
         print("Number of Single Pixel Photons found: ", count_photons)
 
         return list_count_ij
 
-    def plot_adu_dist(self,bins=200):
+    def plot_adu_dist(self, bins=200):
 
         # list_adu = self.find_single_pixel_ADU()
         list_adu = self.findSingle_pixel_ADU_no_diagonal()
@@ -196,8 +196,7 @@ class SinglePixel:
 
 
 def save_SinglePixel_ADU(list_indices=list_data, folderpath="stored_variables",
-                           how_many_sigma=3,plot=False,save=True,ylim=None):
-
+                         how_many_sigma=3, plot=False, save=True, ylim=None):
     adu_folderpath = os.path.join(folderpath, "ADU")
     if not os.path.exists(adu_folderpath):
         os.makedirs(adu_folderpath)
@@ -206,16 +205,15 @@ def save_SinglePixel_ADU(list_indices=list_data, folderpath="stored_variables",
 
     for idx_oI in list_indices:
         print(idx_oI)
-        single_pixelEng = SinglePixel(idx_oI,how_many_sigma)
+        single_pixelEng = SinglePixel(idx_oI, how_many_sigma)
         adu_list = single_pixelEng.find_single_pixel_ADU()
         dict_adu_lists[idx_oI] = adu_list
 
         if save:
             np.save(os.path.join(adu_folderpath, f"{idx_oI}.npy"), np.array(adu_list))
 
-
     if plot:
-        bin_edges = np.arange(0,200,step=1)
+        bin_edges = np.arange(0, 200, step=1)
 
         # Plot histograms as lines
         for i, (idx, adu_list) in enumerate(dict_adu_lists.items()):
@@ -238,7 +236,7 @@ def save_SinglePixel_ADU(list_indices=list_data, folderpath="stored_variables",
         plt.show()
 
 
-def plot_compare_singlePixel_ADU(list_indices=list_data, folderpath="stored_variables",ylim=None):
+def plot_compare_singlePixel_ADU(list_indices=list_data, folderpath="stored_variables", ylim=None):
     dict_adu_lists = {}
 
     adu_folderpath = os.path.join(folderpath, "ADU")
@@ -247,7 +245,7 @@ def plot_compare_singlePixel_ADU(list_indices=list_data, folderpath="stored_vari
         adu_array = np.load(os.path.join(adu_folderpath, f"{idx_oI}.npy"))
         dict_adu_lists[idx_oI] = adu_array
 
-    bin_edges = np.arange(0,200,step=1)
+    bin_edges = np.arange(0, 200, step=1)
 
     # Plot histograms as lines
     for i, (idx, adu_list) in enumerate(dict_adu_lists.items()):
@@ -266,13 +264,13 @@ def plot_compare_singlePixel_ADU(list_indices=list_data, folderpath="stored_vari
     plt.legend(loc='upper right', fontsize='small', ncol=2)
 
     if ylim is not None:
-        plt.ylim(top=ylim,bottom=0)
+        plt.ylim(top=ylim, bottom=0)
     plt.grid(True)
     plt.show()
 
 
 class Island_PhotonCounting:
-    def __init__(self, indexOfInterest, no_photon_adu_thr=80, sp_adu_thr=150,adu_offset=40, adu_cap=1600,
+    def __init__(self, indexOfInterest, no_photon_adu_thr=80, sp_adu_thr=150, adu_offset=40, adu_cap=1600,
                  removeRows0To_=0, howManySigma_thr=2, ):
         """
         :param indexOfInterest: Image Matrix index of interest
@@ -308,7 +306,7 @@ class Island_PhotonCounting:
         self.adu_offset = adu_offset
         self.adu_cap = adu_cap
 
-        meanPedestal, sigmaPedestal = pedestal_mean_sigma_awayFromLines(self.imMatRAW,indexOfInterest=indexOfInterest)
+        meanPedestal, sigmaPedestal = pedestal_mean_sigma_awayFromLines(self.imMatRAW, indexOfInterest=indexOfInterest)
         self.meanPedestal = meanPedestal
         self.sigmaPedestal = sigmaPedestal
 
@@ -325,8 +323,9 @@ class Island_PhotonCounting:
         # plt.imshow(self.imMat)
         # plt.show()
 
-    def operateOnIslands(self, image_matrix_replace=None, plot_checkedMat=False, diagnosticPrint=False):
-        print("-"*30)
+    def operateOnIslands(self, image_matrix_replace=None, plot_checkedMat=False, diagnosticPrint=False,
+                         diagnostic_of_large_islands=False,how_many_more_sigma=1, unit_test_correct_mat=None):
+        print("-" * 30)
         print("OperateOnIslands")
         results_dict = {
             "number_of_islands": 0,
@@ -337,6 +336,8 @@ class Island_PhotonCounting:
             "total_ADU": [],
             "list_countij": [],
         }
+
+        dict_multiphoton_counts = {}
 
         if image_matrix_replace is None:
             moI = self.imMat  # Matrix of Interest
@@ -373,11 +374,25 @@ class Island_PhotonCounting:
                     islandVals = []
                     scour_for_neighbours(i, j, island, islandVals)  # island has been appended and totVal acquired
 
+                    min_i = min(i for i, j in island)
+                    max_i = max(i for i, j in island)
+                    min_j = min(j for i, j in island)
+                    max_j = max(j for i, j in island)
+
+                    # Creating mini matrices with the island in it:
+                    matrix_island = np.zeros((max_i - min_i + 1, max_j - min_j + 1))
+
+                    # Fill the matrix with the corresponding values
+                    for (i_, j_), val in zip(island, islandVals):
+                        matrix_island[i_ - min_i, j_ - min_j] = val
+
                     totVal = 0
                     for val in islandVals:
                         totVal += val
 
                     numPoints = len(island)
+
+                    # use the island vals more inteligently
 
                     results_dict["number_of_islands"] += 1
                     results_dict["number_of_points"].append(numPoints)
@@ -391,31 +406,60 @@ class Island_PhotonCounting:
                         results_dict["number_higher_than_capture"] += 1
                         continue
                     else:
-                        # TotVal < N_photons * single  + offset
-                        lessThanN = (totVal - self.adu_offset) / self.sp_adu_thr
-                        numPhotons = math.ceil(lessThanN)
+
+                        # Want to penalise very large islands:
+                        pixel_size_island_mat = matrix_island.shape[0] * matrix_island.shape[1]
+                        penalty = 0.0533 * self.sigmaPedestal * pixel_size_island_mat
+
+                        totVal -= penalty
+
+                        lessThanN = totVal / self.sp_adu_thr
+                        numPhotons = round(lessThanN)
+
+                        # Round down apart from initially
+                        if numPhotons == 0:
+                            numPhotons = 1
+
+                        dict_multiphoton_counts[numPhotons] = dict_multiphoton_counts.get(numPhotons, 0) + 1
 
                     results_dict["number_of_photons"] += numPhotons
 
-                    # print(totVal)
-
-                    idx_ordered_list = sorted(range(len(islandVals)), key=lambda i: islandVals[i], reverse=True)
-
-                    if numPhotons > numPoints:
+                    if numPhotons == 1:
+                        idx_ordered_list = sorted(range(len(islandVals)), key=lambda i: islandVals[i], reverse=True)
                         idx_max = idx_ordered_list[0]
                         ij_tuple = island[idx_max]
 
-                        results_dict["list_countij"].append([numPhotons, ij_tuple[0], ij_tuple[1]])
-                    else:
-                        for number in range(numPhotons):
-                            idx_photon = idx_ordered_list[number]  # ie find the idx of this photon
-                            ij_tuple = island[idx_photon]
-
-                            if diagnosticPrint:
-                                print(f"Photon at (i,j) = {ij_tuple}, ADU = {moI[ij_tuple[0], ij_tuple[1]]}")
+                        results_dict["list_countij"].append([1, ij_tuple[0], ij_tuple[1]])
+                        continue
 
 
-                            results_dict["list_countij"].append([1, ij_tuple[0], ij_tuple[1]])
+                    if diagnosticPrint:
+                        print(f"i ~ {i}, j~ {j}, totVal ~ {totVal}, numPoints = {numPoints}")
+
+                    mat_more_thr, list_count_ij_island_prime = self.operate_on_mini_island_matrix(island_matrix=matrix_island,
+                                                                                            num_photons_expected=numPhotons,
+                                                                                            how_many_more_sigma=how_many_more_sigma,
+                                                                                            diagnostic_print=diagnosticPrint)
+
+                    if diagnostic_of_large_islands:
+                        if numPhotons>7:
+                            if unit_test_correct_mat is None:
+                                self.plot_matrices_of_island(test_mat = matrix_island,
+                                                         island_more_thr = mat_more_thr,
+                                                         l_countij_from_algorithm = list_count_ij_island_prime,
+                                                         how_many_more_sigma=how_many_more_sigma)
+                            else:
+                                unit_test_correct_mat_island = unit_test_correct_mat[min_i:max_i+1, min_j:max_j+1]
+                                self.plot_matrices_of_island(test_mat=matrix_island,
+                                                             island_more_thr=mat_more_thr,
+                                                             l_countij_from_algorithm=list_count_ij_island_prime,
+                                                             how_many_more_sigma=how_many_more_sigma,
+                                                             correctMat=unit_test_correct_mat_island)
+
+                    # now convert back and store in dictionary
+                    for row in list_count_ij_island_prime:
+                        results_dict["list_countij"].append([row[0], row[1] + min_i, row[2] + min_j])
+
 
         print("-" * 30)
         print("Number of islands: ", results_dict["number_of_islands"])
@@ -423,30 +467,201 @@ class Island_PhotonCounting:
         print("Number of counts: ", results_dict["number_of_photons"])
         print("Number of ADU counts higher than capture: ", results_dict["number_higher_than_capture"])
 
+        for key in sorted(dict_multiphoton_counts.keys()):
+            print(f"There were {dict_multiphoton_counts[key]} events with {key} photons")
+
         if plot_checkedMat:
             plt.imshow(checked_mat)
             plt.show()
 
         return results_dict
 
-
-    def plot_ADU(self,):
+    def plot_ADU(self, ):
 
         results_dict = self.operateOnIslands(image_matrix_replace=None)
 
         list_adu = results_dict["total_ADU"]
 
-        bins_enforced = np.arange(0,1000,1)
+        bins_enforced = np.arange(0, 1000, 1)
         hist_values, bin_edges = np.histogram(list_adu, bins=bins_enforced)
 
         plt.figure(figsize=(10, 5))
         plt.bar(bin_edges[:-1], hist_values, width=1, edgecolor="black", alpha=0.7)
         plt.xlabel("ADU")
         plt.ylabel("Count")
-        plt.title(f'Histogram of Island ADUs for image {self.index_of_interest} with {self.howManySigma} sigma thresholding')
+        plt.title(
+            f'Histogram of Island ADUs for image {self.index_of_interest} with {self.howManySigma} sigma thresholding')
         plt.grid(True, linestyle="--", alpha=0.5)
-        plt.yscale('log')
+        # plt.yscale('log')
         plt.show()
+
+    def operate_on_mini_island_matrix(self, island_matrix, num_photons_expected, how_many_more_sigma=1,
+                                      diagnostic_print=False):
+        # Find the position of photons
+
+        print(f"Given the total ADU we expect {num_photons_expected} photons")
+
+        # further remove ADU:
+
+        islandmat_futher_thresholded = island_matrix.copy()
+        islandmat_futher_thresholded = np.where(
+            islandmat_futher_thresholded > (self.howManySigma + how_many_more_sigma) * self.sigmaPedestal,
+            islandmat_futher_thresholded, 0)
+
+        list_countij = self.scour_for_neighbours_miniIsland_mat(
+            islandmat_futher_thresholded=islandmat_futher_thresholded.copy(),
+            num_photons_expected=num_photons_expected,
+            diagnostic_print=diagnostic_print)
+
+        return islandmat_futher_thresholded, list_countij
+
+    def scour_for_neighbours_miniIsland_mat(self,islandmat_futher_thresholded, num_photons_expected, diagnostic_print=False):
+        nrows, ncols = islandmat_futher_thresholded.shape
+        checked_mat_ = np.zeros((nrows, ncols))
+
+        list_count_ij = []
+        dict_remaining_islands = {
+            "total_ADU": [],
+            "island_list": [],
+            "adu_of_island_list": [],
+        }
+
+        # If an individual point has more than single photon adu thr + offset it feels safe to call it a double hit
+
+        indices_more_than = np.argwhere(islandmat_futher_thresholded > self.sp_adu_thr + self.adu_offset)
+        for idx_tuple in indices_more_than:
+            val = islandmat_futher_thresholded[idx_tuple[0], idx_tuple[1]]
+
+            if val > 2*self.sp_adu_thr + self.adu_offset:
+                print("3 Photon single pixel event")
+                count_single_pixel = 3
+            else:
+                count_single_pixel = 2
+
+            if count_single_pixel < num_photons_expected+1:
+                list_count_ij.append([count_single_pixel,idx_tuple[0], idx_tuple[1]])
+                num_photons_expected -= count_single_pixel
+
+                # set these values to 0 now
+                islandmat_futher_thresholded[idx_tuple[0], idx_tuple[1]] = 0
+            else:
+                print("Fewer Photons expected than that on this individual element")
+
+
+        def scour_for_neighbours(i_idx, j_idx, island_list, islandValList):
+            if i_idx < 0 or i_idx >= nrows or j_idx < 0 or j_idx >= ncols:
+                return
+            if checked_mat_[i_idx, j_idx] == 1 or islandmat_futher_thresholded[i_idx, j_idx] == 0:
+                return
+            if len(island_list) > 100:
+                return
+
+            checked_mat_[i_idx, j_idx] = 1
+            island_list.append((i_idx, j_idx))
+            islandValList.append(islandmat_futher_thresholded[i_idx, j_idx])
+
+            # Now scour for neighbours
+
+            for di, dj in [(-1, 0),
+                           (0, -1), (0, 1),
+                           (1, 0), ]:
+                scour_for_neighbours(i_idx + di, j_idx + dj, island_list, islandValList)
+
+        for i in range(nrows):
+            for j in range(ncols):
+                if islandmat_futher_thresholded[i, j] != 0 and checked_mat_[i, j] == 0:
+                    island = []
+                    island_vals = []
+                    scour_for_neighbours(i, j, island, island_vals)
+
+                    totval = sum(island_vals)
+
+                    if diagnostic_print:
+                        print(totval)
+
+                    dict_remaining_islands["total_ADU"].append(totval)
+                    dict_remaining_islands["island_list"].append(island)
+                    dict_remaining_islands["adu_of_island_list"].append(island_vals)
+
+
+
+        proportion_of_total = self.split_integer_adu(num_photons_expected, dict_remaining_islands)
+
+        # Now split their quantities between the points in the island
+
+        if diagnostic_print:
+            print("The number of splittings is: ", proportion_of_total)
+
+        for numPhotons_island, ij_list, adu_list in zip(proportion_of_total, dict_remaining_islands["island_list"],
+                                                        dict_remaining_islands["adu_of_island_list"]):
+
+            idx_ordered_list = sorted(range(len(adu_list)), key=lambda i: adu_list[i], reverse=True)
+
+            if len(ij_list) < numPhotons_island:
+                idx_max = idx_ordered_list[0]
+                ij_tuple = ij_list[idx_max]
+                list_count_ij.append([numPhotons_island, ij_tuple[0], ij_tuple[1]])
+                if diagnostic_print:
+                    print([numPhotons_island, ij_tuple[0], ij_tuple[1]])
+            else:
+                for number in range(numPhotons_island):
+                    idx_photon = idx_ordered_list[number]  # ie find the idx of this photon
+                    ij_tuple = ij_list[idx_photon]
+
+                    list_count_ij.append([1, ij_tuple[0], ij_tuple[1]])
+
+                    if diagnostic_print:
+                        print([1, ij_tuple[0], ij_tuple[1]])
+
+        print("-"*30)
+        return list_count_ij
+
+
+    @staticmethod
+    def split_integer_adu(num_photons_expected, dict_remaining_islands):
+        remaining_adu_tot = sum(dict_remaining_islands["total_ADU"])
+
+        # Compute the ideal split values as floats
+        split_floats = [(q / remaining_adu_tot) * num_photons_expected for q in dict_remaining_islands["total_ADU"]]
+
+        # Get initial integer splits by flooring values
+        split_values = [int(x) for x in split_floats]
+
+        # Compute remaining amount to distribute
+        remainder = int(round(num_photons_expected - sum(split_values)))
+
+        # Distribute remainder to the indices with the highest decimal parts
+        decimal_parts = [(i, split_floats[i] - split_values[i]) for i in
+                         range(len(dict_remaining_islands["total_ADU"]))]
+        decimal_parts.sort(key=lambda x: x[1], reverse=True)
+
+        for i in range(remainder):
+            split_values[decimal_parts[i][0]] += 1
+
+        return split_values
+
+    @staticmethod
+    def plot_matrices_of_island(test_mat,island_more_thr,l_countij_from_algorithm,how_many_more_sigma, correctMat=None):
+        matrix_found = np.zeros(test_mat.shape)
+        for row in l_countij_from_algorithm:
+            matrix_found[row[1], row[2]] = row[0]
+
+        total_adu = np.sum(test_mat)
+
+        if correctMat is None:
+            plt.figure(figsize=(12, 4))
+            plt.subplot(1, 3, 1), plt.imshow(test_mat, cmap='hot'), plt.title(f"Unit test matrix\n{total_adu} ADU")
+            plt.subplot(1, 3, 2), plt.imshow(island_more_thr, cmap='hot'), plt.title(f"Unit test matrix\n+{how_many_more_sigma} sigma thresholding")
+            plt.subplot(1, 3, 3), plt.imshow(matrix_found, cmap='hot'), plt.title("Island Counted Photons")
+            plt.show()
+        else:
+            plt.figure(figsize=(12, 4))
+            plt.subplot(1, 4, 1), plt.imshow(test_mat, cmap='hot'), plt.title(f"Unit test matrix\n{total_adu} ADU")
+            plt.subplot(1, 4, 2), plt.imshow(island_more_thr, cmap='hot'), plt.title(f"Unit test matrix\n+{how_many_more_sigma} sigma thresholding")
+            plt.subplot(1, 4, 3), plt.imshow(matrix_found, cmap='hot'), plt.title("Island Counted Photons")
+            plt.subplot(1, 4, 4), plt.imshow(correctMat, cmap='hot'), plt.title("Unit Test Photons")
+            plt.show()
+
 
 
 class Island_PC_v2:
@@ -480,7 +695,6 @@ class Island_PC_v2:
         self.sp_adu_cutoff = sp_adu_cutoff
         self.two_photon_cutoff = two_photon_cutoff
 
-
         meanPedestal, sigmaPedestal = pedestal_mean_sigma_awayFromLines(self.imMatRAW, indexOfInterest=indexOfInterest)
         self.meanPedestal = meanPedestal
         self.sigmaPedestal = sigmaPedestal
@@ -494,7 +708,6 @@ class Island_PC_v2:
         # Calling this self.imMat as well due to old version
         self.howManySigma = howManySigma_thr
         self.imMat = np.where(self.imMatMeanRemoved > howManySigma_thr * self.sigmaPedestal, self.imMatMeanRemoved, 0)
-
 
     def operateOnIslands(self, image_matrix_replace=None, plot_checkedMat=False, diagnosticPrint=True):
         print("-" * 30)
@@ -601,21 +814,21 @@ class Island_PC_v2:
 
 
 class Preset_Shape_PhotonCounting:
-    def __init__(self,index_of_interest,how_many_sigma=1,folderpath="stored_variables"):
+    def __init__(self, index_of_interest, how_many_sigma=1, folderpath="stored_variables"):
         self.indexOI = index_of_interest
         self.howManySigma = how_many_sigma
         self.folderpath = folderpath
 
         self.imMatRaw = imData[index_of_interest]
 
-        mat_minusMean, thr = mat_minusMean_thr_aboveNsigma(index_of_interest,how_many_sigma)
+        mat_minusMean, thr = mat_minusMean_thr_aboveNsigma(index_of_interest, how_many_sigma)
 
         self.imMat = mat_minusMean
 
         self.unique_keys = self.kernel_Dict().keys()
 
-    def list_aduCount_i_j(self,save=True,diagnosticPrint=False,plot_ADU_hist=False):
-        print("-"*30)
+    def list_aduCount_i_j(self, save=True, diagnosticPrint=False, plot_ADU_hist=False):
+        print("-" * 30)
         print("list_aduCount_i_j")
 
         startTime = time.time()
@@ -735,10 +948,9 @@ class Preset_Shape_PhotonCounting:
                 list_adu_ij_key = output_dictionaries[key]["list_adu_ij"]
                 list_adu_ij_combined.extend(list_adu_ij_key)
 
-
         if save:
-            spc_folderpath = spc_folder(self.folderpath,self.indexOI)
-            sigma_folderpath = os.path.join(spc_folderpath,f"{self.howManySigma}_sigma")
+            spc_folderpath = spc_folder(self.folderpath, self.indexOI)
+            sigma_folderpath = os.path.join(spc_folderpath, f"{self.howManySigma}_sigma")
             if not os.path.exists(sigma_folderpath):
                 os.makedirs(sigma_folderpath)
 
@@ -750,7 +962,7 @@ class Preset_Shape_PhotonCounting:
                 np.save(filepath, arr_adu_ij_key)
 
             matrix_filepath = os.path.join(sigma_folderpath, f"raw_matrix_with_checked_points_removed.npy")
-            np.save(matrix_filepath,imMatRaw_points_removed)
+            np.save(matrix_filepath, imMatRaw_points_removed)
 
         if plot_ADU_hist:
             bins_enforced = np.arange(0, 1000, 1)
@@ -769,8 +981,9 @@ class Preset_Shape_PhotonCounting:
 
         if diagnosticPrint:
             plt.figure(figsize=(10, 5))
-            plt.subplot(1, 2, 1), plt.imshow(imMat[600:701,1400:1500], cmap='hot'), plt.title(f"imMat")
-            plt.subplot(1, 2, 2), plt.imshow(imMatRaw_points_removed[600:701,1400:1500], cmap='hot'), plt.title(f"imMat_points_removed")
+            plt.subplot(1, 2, 1), plt.imshow(imMat[600:701, 1400:1500], cmap='hot'), plt.title(f"imMat")
+            plt.subplot(1, 2, 2), plt.imshow(imMatRaw_points_removed[600:701, 1400:1500], cmap='hot'), plt.title(
+                f"imMat_points_removed")
             plt.show()
 
         return output_dictionaries, imMatRaw_points_removed
@@ -816,8 +1029,11 @@ class Preset_Shape_PhotonCounting:
             island_thresholding_sigma = self.howManySigma
 
         island_eng = Island_PC_v2(indexOfInterest=self.indexOI,
-                                  no_photon_adu_thr=100,sp_adu_cutoff=225,two_photon_cutoff=350,
+                                  no_photon_adu_thr=100, sp_adu_cutoff=225, two_photon_cutoff=350,
                                   howManySigma_thr=1)
+
+        # island_eng = Island_PhotonCounting(indexOfInterest=self.indexOI,
+        #                                    no_photon_adu_thr=)
         ped_mean = island_eng.meanPedestal
         ped_sigma = island_eng.sigmaPedestal
 
@@ -858,10 +1074,12 @@ class Preset_Shape_PhotonCounting:
 
             # removing left edge effects
             imMatRaw_points_removed[:, 0:3] = 0
-            imMat_p_removed_islandsigma_thresholded = mat_min_mean_thr_above_Nsigma2(matrix=imMatRaw_points_removed,mean=ped_mean,sigma=ped_sigma,
+            imMat_p_removed_islandsigma_thresholded = mat_min_mean_thr_above_Nsigma2(matrix=imMatRaw_points_removed,
+                                                                                     mean=ped_mean, sigma=ped_sigma,
                                                                                      n_sigma=island_thresholding_sigma)
-            results_dict_island = island_eng.operateOnIslands(image_matrix_replace=imMat_p_removed_islandsigma_thresholded,
-                                                              diagnosticPrint=False)
+            results_dict_island = island_eng.operateOnIslands(
+                image_matrix_replace=imMat_p_removed_islandsigma_thresholded,
+                diagnosticPrint=False)
             list_adu_island = results_dict_island["total_ADU"]
             list_count_ij_island = results_dict_island["list_countij"]
 
@@ -878,10 +1096,7 @@ class Preset_Shape_PhotonCounting:
                 np.save(os.path.join(sigma_folderpath, adu_island_filename), np.array(list_adu_island))
                 np.save(os.path.join(sigma_folderpath, countij_island_filename), np.array(list_count_ij_island))
 
-
-
             adu_dict["Island"] = np.array(list_adu_island)
-
 
         if plot_ADU_hist:
             bins_enforced = np.arange(0, 1000, 1)
@@ -893,18 +1108,19 @@ class Preset_Shape_PhotonCounting:
 
             plt.xlabel("ADU")
             plt.ylabel("Count")
-            plt.title(f"Image {self.indexOI}: Stacked Histogram of ADU Values with thresholding:\n{self.howManySigma} sigma for preset shapes\n{island_thresholding_sigma} sigma for islanding")
+            plt.title(
+                f"Image {self.indexOI}: Stacked Histogram of ADU Values with thresholding:\n{self.howManySigma} sigma for preset shapes\n{island_thresholding_sigma} sigma for islanding")
             plt.legend()
             plt.grid(True, linestyle="--", alpha=0.5)
             plt.show()
 
-    def find_just_island(self,save=True, island_thresholding_sigma=None):
+    def find_just_island(self, save=True, island_thresholding_sigma=None):
 
         if island_thresholding_sigma is None:
             island_thresholding_sigma = self.howManySigma
 
         island_eng = Island_PC_v2(indexOfInterest=self.indexOI,
-                                  no_photon_adu_thr=100,sp_adu_cutoff=225,two_photon_cutoff=350,
+                                  no_photon_adu_thr=100, sp_adu_cutoff=225, two_photon_cutoff=350,
                                   howManySigma_thr=1)
         ped_mean = island_eng.meanPedestal
         ped_sigma = island_eng.sigmaPedestal
@@ -922,7 +1138,8 @@ class Preset_Shape_PhotonCounting:
 
         # removing left edge effects
         imMatRaw_points_removed[:, 0:3] = 0
-        imMat_p_removed_islandsigma_thresholded = mat_min_mean_thr_above_Nsigma2(matrix=imMatRaw_points_removed,mean=ped_mean,sigma=ped_sigma,
+        imMat_p_removed_islandsigma_thresholded = mat_min_mean_thr_above_Nsigma2(matrix=imMatRaw_points_removed,
+                                                                                 mean=ped_mean, sigma=ped_sigma,
                                                                                  n_sigma=island_thresholding_sigma)
         results_dict_island = island_eng.operateOnIslands(image_matrix_replace=imMat_p_removed_islandsigma_thresholded,
                                                           diagnosticPrint=False)
@@ -941,8 +1158,6 @@ class Preset_Shape_PhotonCounting:
             np.save(os.path.join(sigma_folderpath, countij_island_filename), np.array(list_count_ij_island))
 
         return list_count_ij_island
-
-
 
     @staticmethod
     def kernel_Dict():
@@ -1026,7 +1241,6 @@ class Preset_Shape_PhotonCounting:
             spc_folderpath = spc_folder(self.folderpath, self.indexOI)
             sigma_folderpath = os.path.join(spc_folderpath, f"{self.howManySigma}_sigma")
 
-
             for key in self.kernel_Dict().keys():
                 filepath = os.path.join(sigma_folderpath, f"{key}_adu_i_j.npy")
                 arr_adu_ij_key = np.load(filepath)
@@ -1047,7 +1261,7 @@ class Preset_Shape_PhotonCounting:
 
                 dict_arrays[key] = arr_adu_ij_key
         if return_raw_mat_points_removed:
-            return dict_arrays,imMatRaw_points_removed
+            return dict_arrays, imMatRaw_points_removed
         else:
             return dict_arrays
 
@@ -1071,12 +1285,13 @@ class Unit_testing:
 
     @staticmethod
     def unitTest1(fillFrac=0.1, matrix_size=(2048, 2048), mean_adu=150, std_adu=10,
-                  returnJustImage=False, seed=125,plotMat=False):
+                  seed=125, plotMat=False, ):
         spcTrain = SPC_Train_images(2)
 
-        unit_test_mat = spcTrain.createTestData(fillfraction=fillFrac, matrix_size=matrix_size, mean_adu=mean_adu,
-                                                std_adu=std_adu,
-                                                returnJustImage=returnJustImage, seed=seed)
+        unit_test_mat, photon_hits_mat = spcTrain.createTestData(fillfraction=fillFrac, matrix_size=matrix_size,
+                                                                 mean_adu=mean_adu,
+                                                                 std_adu=std_adu, seed=seed,
+                                                                 addAnomaly=False, return_mat_with_exact_hits=True)
 
         num_photons = fillFrac * matrix_size[0] * matrix_size[1]
 
@@ -1092,23 +1307,61 @@ class Unit_testing:
         ])
 
         def loss_function(params):
-            pc_eng = Island_PhotonCounting(8, no_photon_adu_thr=params[0], sp_adu_thr=params[1], adu_offset=params[2], adu_cap=1650,
+            pc_eng = Island_PhotonCounting(8, no_photon_adu_thr=params[0], sp_adu_thr=params[1], adu_offset=params[2],
+                                           adu_cap=1650,
                                            removeRows0To_=0, howManySigma_thr=2, )
 
             results_dict = pc_eng.operateOnIslands(image_matrix_replace=unit_test_mat, diagnosticPrint=False)
 
             numCaptured = results_dict["number_of_photons"]
-            num_above_capture = results_dict["number_higher_than_capture"]
 
-
-            loss = (num_photons - numCaptured)**2
+            loss = (num_photons - numCaptured) ** 2
 
             return loss
-
 
         result = minimize(loss_function, adu_thr_guess, method='Nelder-Mead', options={'maxiter': 30})
 
         print(result.x)
+
+    @staticmethod
+    def compare_islandPhotons_unit_test_hits(fillFrac=0.1, matrix_size=(2048, 2048), mean_adu=150, std_adu=10,
+                                             seed=125, no_photon_adu_thr=100, sp_adu_thr=150, adu_offset=30,
+                                             adu_cap=3000,diagnostics=True,diagnostic_of_large_islands=False):
+        print("compare_islandPhotons_unit_test_hits\n")
+        spcTrain = SPC_Train_images(2)
+
+        unit_test_mat, photon_hits_mat = spcTrain.createTestData(fillfraction=fillFrac, matrix_size=matrix_size,
+                                                                 mean_adu=mean_adu,
+                                                                 std_adu=std_adu, seed=seed,
+                                                                 addAnomaly=False, return_mat_with_exact_hits=True)
+
+        num_photons = fillFrac * matrix_size[0] * matrix_size[1]
+        print("The number of Photons created was: ", num_photons)
+
+        pc_eng = Island_PhotonCounting(8, no_photon_adu_thr=no_photon_adu_thr, sp_adu_thr=sp_adu_thr,
+                                       adu_offset=adu_offset,
+                                       adu_cap=adu_cap,
+                                       removeRows0To_=0, howManySigma_thr=2, )
+
+        results_dict = pc_eng.operateOnIslands(image_matrix_replace=unit_test_mat, diagnosticPrint=diagnostics,
+                                               diagnostic_of_large_islands=diagnostic_of_large_islands, unit_test_correct_mat=photon_hits_mat,
+                                               how_many_more_sigma=2)
+
+        mat_islandPhotons = np.zeros(matrix_size)
+        list_count_ij = results_dict["list_countij"]
+        for row in list_count_ij:
+            mat_islandPhotons[row[1], row[2]] = row[0]
+
+        mat_difference = photon_hits_mat-mat_islandPhotons
+
+        # success metric: how many photons are incorrectly
+
+        plt.figure(figsize=(12, 4))
+        plt.subplot(1, 4, 1), plt.imshow(unit_test_mat, cmap='hot'), plt.title("Unit test matrix")
+        plt.subplot(1, 4, 2), plt.imshow(photon_hits_mat, cmap='hot'), plt.title("Unit test photon hit matrix")
+        plt.subplot(1, 4, 3), plt.imshow(mat_islandPhotons, cmap='hot'), plt.title("Island Counted Photons")
+        plt.subplot(1, 4, 4), plt.imshow(mat_difference, cmap='hot'), plt.title("Difference\nWhite = Missed Photons, Black = Incorrectly guessed photons")
+        plt.show()
 
     @staticmethod
     def test_im8clusters():
@@ -1131,7 +1384,7 @@ class Unit_testing:
 
 if __name__ == "__main__":
 
-    def investigate_totADU(indexOI,how_many_sigma=0.5):
+    def investigate_totADU(indexOI, how_many_sigma=1):
         print("Investigating TOTAL ADU")
         pc_eng = Island_PhotonCounting(indexOI, howManySigma_thr=how_many_sigma, )
 
@@ -1141,35 +1394,59 @@ if __name__ == "__main__":
 
         pc_eng.plot_ADU()
 
-    # investigate_totADU(11)
 
-    def presetShape_PC(indexOI_,howManySig=1,island_thresholding_sigma=1):
-        preset_eng = Preset_Shape_PhotonCounting(indexOI_,howManySig)
+    # investigate_totADU(11,3)
+
+    def presetShape_PC(indexOI_, howManySig=2, island_thresholding_sigma=2):
+        preset_eng = Preset_Shape_PhotonCounting(indexOI_, howManySig)
         # preset_eng.list_aduCount_i_j(diagnosticPrint=True,save=True,plot_ADU_hist=True)
-        # preset_eng.preset_then_island(True, island_thresholding_sigma=island_thresholding_sigma)
+        preset_eng.preset_then_island(True, island_thresholding_sigma=island_thresholding_sigma)
 
-        preset_eng.find_just_island(save=True)
+        # preset_eng.find_just_island(save=True)
 
-    presetShape_PC(11)
+
+    # presetShape_PC(11)
     # presetShape_PC(8)
 
     # plot_compare_singlePixel_ADU(ylim=1000)
 
-
     # save_SinglePixel_ADU(plot=True,how_many_sigma=1,ylim=1000,save=False)
 
-    # Unit_testing().unitTest1(fillFrac=0.1,matrix_size=(100,100),plotMat=True)
+    Unit_testing().compare_islandPhotons_unit_test_hits(matrix_size=(100,100),diagnostics=True,diagnostic_of_large_islands=True)
+
+    def test_mini_island_method(how_many_more_sigma=1):
+        island_eng__ = Island_PhotonCounting(8, )
+
+        test_mat = TestImages().image8_cluster_reduced_edited_moreDifficult()
+
+        island_more_thr, l_countij = island_eng__.operate_on_mini_island_matrix(island_matrix=test_mat,
+                                                                                num_photons_expected=8,
+                                                                                how_many_more_sigma=how_many_more_sigma,
+                                                                                diagnostic_print=True)
+
+        matrix_found = np.zeros(test_mat.shape)
+        for row in l_countij:
+            matrix_found[row[1], row[2]] = row[0]
+
+        plt.figure(figsize=(12, 4))
+        plt.subplot(1, 3, 1), plt.imshow(test_mat, cmap='hot'), plt.title("Unit test matrix")
+        plt.subplot(1, 3, 2), plt.imshow(island_more_thr, cmap='hot'), plt.title(f"Unit test matrix\n+{how_many_more_sigma} sigma thresholding")
+        plt.subplot(1, 3, 3), plt.imshow(matrix_found, cmap='hot'), plt.title("Island Counted Photons")
+        plt.show()
+
+
+    # test_mini_island_method()
+
 
     # Unit_testing().test_im8clusters()
 
     def CheckAllSinglePixelHist(indices_of_interest=list_data):
         print("Checking all single-pixel histograms")
         for index_ in indices_of_interest:
-            SinglePixel(index_,2).plot_adu_dist(bins=200)
+            SinglePixel(index_, 2).plot_adu_dist(bins=200)
 
 
     # CheckAllSinglePixelHist([16])
-
 
     def compareFaveLittleSpot():
 
@@ -1191,9 +1468,5 @@ if __name__ == "__main__":
 
 
     # compareFaveLittleSpot()
-
-
-
-
 
     pass

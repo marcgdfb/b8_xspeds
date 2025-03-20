@@ -1,0 +1,21 @@
+
+------------------------------
+2025-03-12 16:50:33
+crystal pitch bounds = (-0.346, -0.343), crystal roll bounds = (0.018, 0.019)
+camera pitch bounds = (0.75, 0.85), camera roll bounds = (-0.006, -0.005)
+rcamBounds = (0.083, 0.086)
+Initial Guess = [-0.3445   0.0184   0.814   -0.00537  0.0839 ]
+r_thetaval = 2.567
+how many sigma = 2
+weight_ofsettedPoints = 0.5
+iterations = 30
+New loss method: True
+------------------------------
+2025-03-12 16:53:19
+optimised crystal pitch = -0.34447041124362976, n crystal roll = 0.018530954424632096
+optimised camera pitch = 0.8070414548551215, n camera roll = -0.005454035634769159
+optimised rcam spherical = [0.08389884 2.567      3.14159265]
+Optimised n crystal = [-0.33769825 -0.01744134  0.94109282]
+Optimised n camera = [0.7222441  0.0037722  0.69162796]
+Optimised r camera = [0.08389884 2.567      3.14159265]
+Loss = 6016.0

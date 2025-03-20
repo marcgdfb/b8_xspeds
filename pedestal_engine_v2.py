@@ -83,11 +83,11 @@ class Pedestal:
             "x_3sigma": [x0Optimised + 3 * sigmaOptimised, x0Optimised_unc + 3 * sigmaOptimised_unc]
         }
 
-        nrows = self.imageMatrix.shape[0]
-        ncols = self.imageMatrix.shape[1]
-        npixels = nrows * ncols
+        # nrows = self.imageMatrix.shape[0]
+        # ncols = self.imageMatrix.shape[1]
+        # npixels = nrows * ncols
 
-        above1,above2,above3 = findExpectedCountsAbove123sigma(gaussFit_dict,npixels)
+        # above1,above2,above3 = findExpectedCountsAbove123sigma(gaussFit_dict,npixels)
 
         # print(f"\nThe ADU value associated with x0 + N sigma and the number of counts found above that is:")
         # print(f"1: {gaussFit_dict['x_1sigma'][0]:.2f} +- {gaussFit_dict['x_1sigma'][1]:.2f} with {above1} counts")
@@ -263,29 +263,19 @@ def create_sum_all_images(used_saved=True):
     plt.xlabel("Image i Index")
     plt.show()
 
-
-
 def plot_sigmaThr_mat(indexOI=8,how_many_sigma=2):
     image_mat11, thr2sigma11 = mat_minusMean_thr_aboveNsigma(indexOI,how_many_sigma)
     plt.imshow(image_mat11,cmap='hot')
     plt.show()
 
 
-def plotCompare_Pedestals(list_ordered=reversed([3,0,8,7,6,])):
-    iIndexStart = 500
-    iIndexEnd = 1750
-    jIndexStart = 50
-    jIndexEnd = 1150
+def plotCompare_Pedestals(list_ordered=reversed([0,8,6,11])):
+
     bin_edges = np.arange(-40, 225, step=1)
 
-
-    # for index_data in range(len(imData)):
     for index_data in list_ordered:
         print(index_data)
-        matIndex = imData[index_data]
         matIndex_MinusMean = matMinusMean(index_data)
-        # titleH = f"Image {index_data} Gaussian Fit for i∊[{iIndexStart},{iIndexEnd}] and j∊[{jIndexStart},{jIndexEnd}] "
-
         hist_values, bin_edges = np.histogram(matIndex_MinusMean.flatten(), bins=bin_edges)
 
         # Plotting the histogram
@@ -299,7 +289,7 @@ def plotCompare_Pedestals(list_ordered=reversed([3,0,8,7,6,])):
 
     plt.xlabel('ADU Value')
     plt.ylabel('Count')
-    plt.title(f'ADU Histograms')
+    plt.title('ADU Histograms with Mean Subtracted')
     plt.legend(loc='upper right', fontsize='small', ncol=2)
     plt.grid(True)
     plt.yscale('log')
@@ -308,6 +298,15 @@ def plotCompare_Pedestals(list_ordered=reversed([3,0,8,7,6,])):
 
 
 if __name__ == "__main__":
+
+    def plot_reduced_mat(indexOI,NSigma):
+        mat_oI, thr = mat_minusMean_thr_aboveNsigma(indexOI,NSigma)
+
+        plt.imshow(mat_oI, cmap='hot')
+        plt.show()
+
+    # plot_reduced_mat(11,2)
+
 
     def check_spcUsage(indexOfInterest):
         imMatRaw = loadData()[indexOfInterest]
@@ -322,7 +321,7 @@ if __name__ == "__main__":
 
     # check_spcUsage(8)
 
-    # plotCompare_Pedestals([11,8])
+    plotCompare_Pedestals()
 
     # plot_sigmaThr_mat(11,2)
 
@@ -341,7 +340,7 @@ if __name__ == "__main__":
         Investigate().printIntenstiy_verticallyWithOutliers(mat_sigma_thr3, f"{index_of_interest} - 3 sigma thresholded")
 
 
-        # Let us now consider the top 500 rows vertically to see if it's about even / if it show the spectrum properties
+        # Let us now consider the top 500 rows vertically to see if it's about even / if it shows the spectrum properties
 
         top_rows = 500
 

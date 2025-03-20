@@ -231,7 +231,7 @@ def compare_energy_matrices(index1,index2,folderpath="stored_variables"):
     energy_mat_2 = np.load(energy_filepath2)
 
     mat_dif = energy_mat_1 - energy_mat_2
-    plt.imshow(mat_dif,cmap='gray')
+    plt.imshow(mat_dif,cmap='GnBu')
     plt.title(f"Energy Gradient difference for image {index1} - {index2}")
     plt.colorbar(label="Energy Difference (eV)")
     plt.ylabel("j index")
@@ -244,7 +244,7 @@ def plot_solidAngle(indexOI,folderpath="stored_variables"):
 
     mat_SA = np.load(solidA_filepath)
 
-    plt.imshow(mat_SA, cmap='gray')
+    plt.imshow(mat_SA, cmap='plasma')
     plt.title(f"solid angle for image {indexOI}")
     plt.colorbar(label="Solid Angle")
     plt.show()
@@ -252,6 +252,7 @@ def plot_solidAngle(indexOI,folderpath="stored_variables"):
 
 
 if __name__ == "__main__":
+    compare_energy_matrices(7,8)
 
     # FileManipulation().plotLoss_quadVSelipse()
 

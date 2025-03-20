@@ -486,12 +486,16 @@ class Spectrum_old:
 
         return energyList
 
-    def islandSpectrum_SolidAngle_with_uncertainty(self,bin_width=1,save=True, diagnosticPrint=False):
+    def islandSpectrum_SolidAngle_with_uncertainty(self,bin_width=1,save=True, diagnosticPrint=False,
+                                                   normalise=True):
         energyList_islands, _ = self.multiPixel_island(bin_width=bin_width, plotSpectrum=False)
 
         energyBins = np.arange(1000, 1000+(700 // bin_width + 1) * bin_width, bin_width)
         photonEnergies = np.array(energyList_islands)
         count_array, bin_edges = np.histogram(photonEnergies, energyBins)
+        if normalise:
+            count_array = count_array / np.max(count_array)
+
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
         print(f"count_array: length = {len(count_array)}")
@@ -945,7 +949,7 @@ def plot_individual_Saved_spec(indexOI,folderpath="stored_variables"):
 
 def check_spec(indexOI,folderpath="stored_variables",testPrint=False,save=False,remove_top_rows=0):
     spectrum = Spectrum_old(indexOI, removeTopRows=remove_top_rows,
-                            how_many_sigma=4, no_photon_adu_thr=100, sp_adu_thr=150, adu_offset=40, adu_cap=1650,
+                            how_many_sigma=2, no_photon_adu_thr=100, sp_adu_thr=150, adu_offset=40, adu_cap=1600,
                             )
 
 
@@ -991,6 +995,10 @@ def plot_total_spectrum(bin_width=1,folderpath="stored_variables"):
 if __name__ == "__main__":
     # collect_savedSpectrums()
 
+    check_spec(11,testPrint=True)
+
+    # plot_individual_Saved_spec(11)
+
     def generate_all_individual_spectrums():
 
         for index_ in list_data:
@@ -1024,7 +1032,7 @@ if __name__ == "__main__":
         spec_eng.spectrum_set_then_island(bin_width=1,island_filename=isl_filename)
 
 
-    setshapes_energy_lists(11)
+    # setshapes_energy_lists(11)
 
     # plot_all_individual_spectrums()
 

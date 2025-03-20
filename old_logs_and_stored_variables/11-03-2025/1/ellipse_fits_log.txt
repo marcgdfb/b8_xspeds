@@ -1,0 +1,104 @@
+
+------------------------------
+Index of Interest 1, thresholded above 2 sigma
+Adjacent pixels weighted by 0.5
+Line integral used pixel width of 5
+------------------------------
+left Line: 
+------------------------------
+Index of Interest 1, thresholded above 2 sigma
+Adjacent pixels weighted by 0.5
+Line integral used pixel width of 5
+------------------------------
+left Line: 
+------------------------------
+Index of Interest 1, thresholded above 2 sigma
+Adjacent pixels weighted by 0.5
+Line integral used pixel width of 5
+------------------------------
+left Line: 
+------------------------------
+Index of Interest 1, thresholded above 2 sigma
+Adjacent pixels weighted by 0.5
+Line integral used pixel width of 5
+------------------------------
+left Line: 
+------------------------------
+Index of Interest 1, thresholded above 2 sigma
+Adjacent pixels weighted by 0.5
+Line integral used pixel width of 5
+------------------------------
+left Line: 
+------------------------------
+Index of Interest 1, thresholded above 2 sigma
+Adjacent pixels weighted by 0.5
+Line integral used pixel width of 5
+------------------------------
+left Line: 
+------------------------------
+2025-03-12 11:49:55
+y0_bounds = (700, 950)
+a_bounds = (500, 1500)
+b_bounds = (2500, 4500)
+c_bounds = (1220, 1340)
+Optimised y0 = 871.487462474521, a = 1096.831350742212, b = 2760.608277556325, C = 1273.7561661323955 +- 0.4162190881801597
+Loss = -10992.353545096372
+------------------------------
+right Line: 
+------------------------------
+2025-03-12 11:52:17
+y0_bounds = (700, 950)
+a_bounds = (1000, 2000)
+b_bounds = (2500, 4500)
+c_bounds = (1380, 1460)
+Optimised y0 = 847.5915575658971, a = 1496.5042331304744, b = 3392.599028828548, C = 1418.3171636061127 +- 0.36931537313532725
+Loss = -22390.56317311819
+------------------------------
+Index of Interest 1, thresholded above 2 sigma
+Adjacent pixels weighted by 0.5
+Line integral used pixel width of 5
+------------------------------
+left Line: 
+------------------------------
+2025-03-12 15:59:45
+y0_bounds = (700, 950)
+a_bounds = (500, 1500)
+b_bounds = (2500, 4500)
+c_bounds = (1220, 1340)
+Optimised y0 = 871.487462474521, a = 1096.831350742212, b = 2760.608277556325, C = 1273.7561661323955 +- 0.4162190881801597
+Loss = -10992.353545096372
+------------------------------
+right Line: 
+------------------------------
+2025-03-12 16:02:45
+y0_bounds = (700, 950)
+a_bounds = (1000, 2000)
+b_bounds = (2500, 4500)
+c_bounds = (1380, 1460)
+Optimised y0 = 847.5915575658971, a = 1496.5042331304744, b = 3392.599028828548, C = 1418.3171636061127 +- 0.36931537313532725
+Loss = -22390.56317311819
+------------------------------
+Index of Interest 1, thresholded above 2 sigma
+Adjacent pixels weighted by 0.5
+Line integral used pixel width of 5
+------------------------------
+left Line: 
+------------------------------
+2025-03-12 16:06:17
+y0_bounds = (700, 950)
+a_bounds = (500, 1500)
+b_bounds = (2500, 4500)
+c_bounds = (1220, 1340)
+Optimised y0 = 871.487462474521, a = 1096.831350742212, b = 2760.608277556325, C = 1273.7561661323955 +- 0.4162190881801597
+Loss = -10992.353545096372
+------------------------------
+right Line: 
+------------------------------
+2025-03-12 16:08:26
+y0_bounds = (700, 950)
+a_bounds = (1000, 2000)
+b_bounds = (2500, 4500)
+c_bounds = (1380, 1460)
+Optimised y0 = 847.5915575658971, a = 1496.5042331304744, b = 3392.599028828548, C = 1418.3171636061127 +- 0.36931537313532725
+Loss = -22390.56317311819
+Finish: 2025-03-12 16:08:26

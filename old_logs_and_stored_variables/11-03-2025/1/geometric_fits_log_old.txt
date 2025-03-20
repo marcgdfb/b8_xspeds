@@ -1,0 +1,61 @@
+
+------------------------------
+2025-03-11 15:35:17
+crystal pitch bounds = (None, None), crystal roll bounds = (None, None)
+camera pitch bounds = (0, None), camera roll bounds = (None, None)
+rcamBounds = (0.07, 0.15)
+optimised crystal pitch = -0.3438833868603555, n crystal roll = 0.018668934911080477
+optimised camera pitch = 0.7983061569363687, n camera roll = -0.00539472777397121
+optimised rcam spherical = [0.08412968 2.567      3.14159265]
+Optimised n crystal = [-0.33714565 -0.01757489  0.94128844]
+Optimised n camera = [0.71617495 0.00376507 0.69791064]
+Optimised r camera = [0.08412968 2.567      3.14159265]
+Loss = -2012.799999999981
+------------------------------
+### This should be much better ~ 4000 ###
+------------------------------
+2025-03-11 16:03:03
+crystal pitch bounds = (None, None), crystal roll bounds = (None, None)
+camera pitch bounds = (0, None), camera roll bounds = (None, None)
+rcamBounds = (0.07, 0.15)
+optimised crystal pitch = -0.3443738245944725, n crystal roll = 0.01863565924415965
+optimised camera pitch = 0.8003513516919012, n camera roll = -0.0053922967941495425
+optimised rcam spherical = [0.08409503 2.567      3.14159265]
+Optimised n crystal = [-0.33760733 -0.01754049  0.94112359]
+Optimised n camera = [0.71760084 0.00375547 0.6964445 ]
+Optimised r camera = [0.08409503 2.567      3.14159265]
+Loss = -2575.5
+------------------------------
+2025-03-11 16:06:15
+crystal pitch bounds = (None, None), crystal roll bounds = (None, None)
+camera pitch bounds = (0, None), camera roll bounds = (None, None)
+rcamBounds = (0.07, 0.15)
+optimised crystal pitch = -0.3431311021220944, n crystal roll = 0.018100897641967165
+optimised camera pitch = 0.8078607484151941, n camera roll = -0.005411142881598371
+optimised rcam spherical = [0.08571854 2.567      3.14159265]
+Optimised n crystal = [-0.33643731 -0.01704479  0.9415516 ]
+Optimised n camera = [0.72281051 0.00373933 0.69103617]
+Optimised r camera = [0.08571854 2.567      3.14159265]
+Loss = -3577.5
+------------------------------
+----Still not working right...
+
+------------------------------
+2025-03-11 16:20:59
+crystal pitch bounds = (-0.346, -0.343), crystal roll bounds = (None, None)
+camera pitch bounds = (0.7, 0.9), camera roll bounds = (None, None)
+rcamBounds = (0.082, 0.086)
+Initial Guess = [-0.3445   0.0184   0.814   -0.00537  0.0839 ]
+r_thetaval = 2.567
+how many sigma = 2
+weight_ofsettedPoints = 0.5
+iterations = 30
+------------------------------
+2025-03-11 16:23:35
+optimised crystal pitch = -0.3438003582531728, n crystal roll = 0.01842935200344302
+optimised camera pitch = 0.8273609552574568, n camera roll = -0.005401201071445545
+optimised rcam spherical = [0.08390712 2.567      3.14159265]
+Optimised n crystal = [-0.33706748 -0.01734989  0.94132061]
+Optimised n camera = [0.73614778 0.00365563 0.67681097]
+Optimised r camera = [0.08390712 2.567      3.14159265]
+Loss = -3320.5
