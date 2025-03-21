@@ -184,6 +184,99 @@ class Pedestal:
             plt.show()
 
 
+class Visualise_Pedestal:
+
+    @staticmethod
+    def top_rank_thresholding(indexOI,Nsigma):
+
+        mat_hms, thr1 = mat_minusMean_thr_aboveNsigma(indexOI,Nsigma)
+
+        mat_hms_plus_1, thr2 = mat_minusMean_thr_aboveNsigma(indexOI,Nsigma+1)
+
+        title_1 = f"Thresholded above {Nsigma} sigma"
+        title_2 = f"Thresholded below {Nsigma + 1} sigma"
+        title_main = f"Top of Image {indexOI} at different thresholding levels: "
+
+        sub_mat1 = mat_hms[0:101,0:101]
+        sub_mat2 = mat_hms_plus_1[0:101,0:101]
+
+        plt.figure(figsize=(6, 6))
+        plt.suptitle(title_main, fontsize=12, y=0.96 )
+        plt.subplot(2, 2, 1), plt.imshow(sub_mat1, cmap="hot"), plt.title(title_1)
+        plt.subplot(2, 2, 2), plt.imshow(sub_mat2, cmap="hot"), plt.title(title_2)
+
+        row_sums1 = np.sum(mat_hms, axis=1)
+        row_sums2 = np.sum(mat_hms_plus_1, axis=1)
+        row_indices = -np.arange(len(row_sums1))
+
+        # Plot for mat_hms
+        plt.subplot(2, 2, 3)
+        plt.scatter(row_sums1, row_indices, marker='.', color='orange', s=5)
+        plt.ylabel("- Row Index")
+        plt.xlabel("Total Sum")
+        plt.grid(True, linestyle='--', alpha=0.6)
+
+        # Plot for mat_hms_plus_1
+        plt.subplot(2, 2, 4)
+        plt.scatter(row_sums2, row_indices, marker='.', color='orange',  s=5)
+        plt.ylabel("- Row Index")
+        plt.xlabel("Total Sum")
+        plt.grid(True, linestyle='--', alpha=0.6)
+
+        plt.tight_layout()
+        plt.show()
+
+    @staticmethod
+    def sum_all_images():
+        mat_im_sum = np.zeros((2048, 2048))
+        folderpath = "Misc_images"
+        filename = "summed_all_images_2sigmaTHR.npy"
+        filepath = os.path.join(folderpath, filename)
+
+        try:
+            mat_im_sum = np.load(filepath)
+        except FileNotFoundError:
+            for index in range(len(loadData())):
+                image_mat, __ = mat_thr_aboveNsigma(index, 2)
+                # image_mat = imData[index]
+                mat_im_sum += image_mat
+
+            np.save(filepath, mat_im_sum)
+
+        plt.imshow(mat_im_sum, cmap='turbo')
+        plt.title("Matrix Sum of All Raw Images")
+        plt.ylabel("Image j Index")
+        plt.xlabel("Image i Index")
+        plt.show()
+
+    @staticmethod
+    def plotCompare_Pedestals(list_ordered=reversed([0, 8, 6, 11])):
+
+        bin_edges = np.arange(-40, 225, step=1)
+
+        for index_data in list_ordered:
+            print(index_data)
+            matIndex_MinusMean = matMinusMean(index_data)
+            hist_values, bin_edges = np.histogram(matIndex_MinusMean.flatten(), bins=bin_edges)
+
+            # Plotting the histogram
+            plt.hist(
+                bin_edges[:-1], bins=bin_edges, weights=hist_values,
+                label=f'Image {index_data}',
+                alpha=0.8,
+                linestyle=['-', '--', '-.', ':'][index_data % 4],  # Vary line style
+                linewidth=1.5
+            )
+
+        plt.xlabel('ADU Value')
+        plt.ylabel('Count')
+        plt.title('ADU Histograms with Mean Subtracted')
+        plt.legend(loc='upper right', fontsize='small', ncol=2)
+        plt.grid(True)
+        plt.yscale('log')
+        plt.show()
+
+
 def pedestal_mean_sigma_awayFromLines(imMatrix, indexOfInterest):
     # The i starting index is to avoid the edge effects at the top which is prominent
     iIndexStart, iIndexEnd, jIndexStart, jIndexEnd = 500, 1750, 50, 1150
@@ -196,7 +289,6 @@ def pedestal_mean_sigma_awayFromLines(imMatrix, indexOfInterest):
     sigmaPedestal = gaussFitDict_["sigma"][0]  # + gaussFitDict["sigma"][1]
 
     return meanPedestal, sigmaPedestal
-
 
 def mat_thr_aboveNsigma(index_of_interest, how_many_sigma, ):
     image_mat = loadData()[index_of_interest]
@@ -221,7 +313,6 @@ def mat_minusMean_thr_aboveNsigma(index_of_interest, how_many_sigma, ):
 
     return mat_minusMean, thr
 
-
 def mat_min_mean_thr_above_Nsigma2(matrix,mean,sigma,n_sigma):
     mat_minusMean = matrix.astype(np.int16) - mean
     mat_minusMean[mat_minusMean < 0] = 0
@@ -239,29 +330,6 @@ def matMinusMean(index_of_interest):
 
     return mat_minusMean
 
-def create_sum_all_images(used_saved=True):
-    mat_im_sum = np.zeros((2048,2048))
-    folderpath = "Misc_images"
-    filename = "summed_all_images_4sigmaTHR.npy"
-    filepath = os.path.join(folderpath, filename)
-
-    if used_saved:
-        mat_im_sum = np.load(filepath)
-
-    else:
-
-        for index in range(len(loadData())):
-            image_mat, __ = mat_thr_aboveNsigma(index, 4)
-            # image_mat = imData[index]
-            mat_im_sum += image_mat
-
-        np.save(filepath, mat_im_sum)
-
-    plt.imshow(mat_im_sum, cmap='hot')
-    plt.title("Matrix Sum of All Raw Images")
-    plt.ylabel("Image j Index")
-    plt.xlabel("Image i Index")
-    plt.show()
 
 def plot_sigmaThr_mat(indexOI=8,how_many_sigma=2):
     image_mat11, thr2sigma11 = mat_minusMean_thr_aboveNsigma(indexOI,how_many_sigma)
@@ -269,35 +337,12 @@ def plot_sigmaThr_mat(indexOI=8,how_many_sigma=2):
     plt.show()
 
 
-def plotCompare_Pedestals(list_ordered=reversed([0,8,6,11])):
-
-    bin_edges = np.arange(-40, 225, step=1)
-
-    for index_data in list_ordered:
-        print(index_data)
-        matIndex_MinusMean = matMinusMean(index_data)
-        hist_values, bin_edges = np.histogram(matIndex_MinusMean.flatten(), bins=bin_edges)
-
-        # Plotting the histogram
-        plt.hist(
-            bin_edges[:-1], bins=bin_edges, weights=hist_values,
-            label=f'Image {index_data}',
-            alpha=0.8,
-            linestyle=['-', '--', '-.', ':'][index_data % 4],  # Vary line style
-            linewidth=1.5
-        )
-
-    plt.xlabel('ADU Value')
-    plt.ylabel('Count')
-    plt.title('ADU Histograms with Mean Subtracted')
-    plt.legend(loc='upper right', fontsize='small', ncol=2)
-    plt.grid(True)
-    plt.yscale('log')
-    plt.show()
 
 
 
 if __name__ == "__main__":
+
+    # Visualise_Pedestal().top_rank_thresholding(11,2)
 
     def plot_reduced_mat(indexOI,NSigma):
         mat_oI, thr = mat_minusMean_thr_aboveNsigma(indexOI,NSigma)
@@ -305,7 +350,7 @@ if __name__ == "__main__":
         plt.imshow(mat_oI, cmap='hot')
         plt.show()
 
-    # plot_reduced_mat(11,2)
+    plot_reduced_mat(11,2)
 
 
     def check_spcUsage(indexOfInterest):
@@ -321,11 +366,11 @@ if __name__ == "__main__":
 
     # check_spcUsage(8)
 
-    plotCompare_Pedestals()
+    # plotCompare_Pedestals()
 
     # plot_sigmaThr_mat(11,2)
 
-    def compareCCD_bias(index_of_interest):
+    def investigate_edge_effects(index_of_interest):
 
         mat_raw = loadData()[index_of_interest]
 
@@ -333,24 +378,24 @@ if __name__ == "__main__":
         mat_sigma_thr3, thr = mat_minusMean_thr_aboveNsigma(index_of_interest, 3)
 
         # Investigate().printIntenstiy_horizontally(mat_raw, f"{index_of_interest} Raw")
-        # Investigate().printIntenstiy_horizontally(mat_sigma_thr2, f"{index_of_interest} - 2 sigma thresholded")
-        # Investigate().printIntenstiy_horizontally(mat_sigma_thr3, f"{index_of_interest} - 3 sigma thresholded")
+        Investigate().printIntenstiy_horizontally(mat_sigma_thr2, f"{index_of_interest} - 2 sigma thresholded")
+        Investigate().printIntenstiy_horizontally(mat_sigma_thr3, f"{index_of_interest} - 3 sigma thresholded")
 
-        Investigate().printIntenstiy_verticallyWithOutliers(mat_raw, f"{index_of_interest} Raw")
-        Investigate().printIntenstiy_verticallyWithOutliers(mat_sigma_thr3, f"{index_of_interest} - 3 sigma thresholded")
+        # Investigate().printIntenstiy_verticallyWithOutliers(mat_raw, f"{index_of_interest} Raw")
+        # Investigate().printIntenstiy_verticallyWithOutliers(mat_sigma_thr3, f"{index_of_interest} - 3 sigma thresholded")
 
 
         # Let us now consider the top 500 rows vertically to see if it's about even / if it shows the spectrum properties
 
-        top_rows = 500
-
-        mat_raw_top = mat_raw[0:top_rows, :]
-        mat_sigma_thr2_top = mat_sigma_thr2[0:top_rows, :]
-        mat_sigma_thr3_top = mat_sigma_thr3[0:top_rows, :]
-
-        Investigate.printIntenstiy_vertically(mat_raw_top,f"{index_of_interest} Raw: top {top_rows} rows")
-        Investigate.printIntenstiy_vertically(mat_sigma_thr2_top, f"{index_of_interest} Raw: top {top_rows} rows - 2 sigma thresholded")
-        Investigate.printIntenstiy_vertically(mat_sigma_thr3_top, f"{index_of_interest} Raw: top {top_rows} rows - 3 sigma thresholded")
+        # top_rows = 500
+        #
+        # mat_raw_top = mat_raw[0:top_rows, :]
+        # mat_sigma_thr2_top = mat_sigma_thr2[0:top_rows, :]
+        # mat_sigma_thr3_top = mat_sigma_thr3[0:top_rows, :]
+        #
+        # Investigate.printIntenstiy_vertically(mat_raw_top,f"{index_of_interest} Raw: top {top_rows} rows")
+        # Investigate.printIntenstiy_vertically(mat_sigma_thr2_top, f"{index_of_interest} Raw: top {top_rows} rows - 2 sigma thresholded")
+        # Investigate.printIntenstiy_vertically(mat_sigma_thr3_top, f"{index_of_interest} Raw: top {top_rows} rows - 3 sigma thresholded")
 
 
     # compareCCD_bias(11)

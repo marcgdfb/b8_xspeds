@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import itertools
 import os
+import pandas as pd
 
 
 # TODO: find and log uncertainty in values the C value for fitting
@@ -14,6 +15,18 @@ import os
 class Geometry:
     def __init__(self, crystal_pitch, crystal_roll, camera_pitch, camera_roll,
                  r_cam, r_theta=2.567, xpixels=2048, ypixels=2048, pixelWidth=pixel_width, ):
+
+        def print_initialised_geo_params():
+            print("\n" + "-"*30)
+            print("Initialised geometry parameters:")
+            print("crystal_pitch:", crystal_pitch)
+            print("crystal_roll:", crystal_roll)
+            print("camera_pitch:", camera_pitch)
+            print("camera_roll:", camera_roll)
+            print("r_cam:", r_cam)
+
+        print_initialised_geo_params()
+
         self.crystal_pitch = crystal_pitch
         self.crystal_roll = crystal_roll
         self.nxcrystal = np.sin(crystal_pitch) * np.cos(crystal_roll)
@@ -495,6 +508,7 @@ class Quadratic_Fit:
 
         return linesMatrix
 
+ellipse_latex_string = r"c + A - A \cdot \sqrt{1 - \frac{(y - y_0)^2}{B^2}}"
 
 class Ellipse_Fit:
     def __init__(self, imageMatrix, logTextFile=None, adjacentWeight=0.5,
@@ -696,6 +710,7 @@ class Ellipse_Fit:
                 linesMat[yp, xp] = value_of_line_points
 
         return linesMat
+
 
 
 class Bragg:
@@ -1055,7 +1070,6 @@ def fit_geometry_to_ellipse(indexOfInterest,
     # imMatVeryClear = imVeryClear(image_mat, 0, (21, 5))
 
 
-
     if useQuadratic:
         cal_quadratic = Quadratic_Fit(image_mat,None,adjacentWeight=0.5,width_lineIntegral_5=True)
         leftvars, rightvars = access_saved_quadratics(indexOfInterest,folderpath)
@@ -1240,7 +1254,7 @@ def geo_engine_withSavedParams(index_oI):
 
 # ---------- Generate energy and solid angle matrices
 
-def save_energy_and_solid_angle_matrix(indexOfInterest, savefile=True, folderpath="stored_variables", ifplot=False, ):
+def save_energy_and_solid_angle_matrix(indexOfInterest, savefile=True, folderpath="stored_variables", ifplot=False, solid_angle_grid_width=10 ):
     # Ensuring the folder is initialised
     index_folder = os.path.join(folderpath, str(indexOfInterest))
     if not os.path.exists(index_folder):
@@ -1258,7 +1272,7 @@ def save_energy_and_solid_angle_matrix(indexOfInterest, savefile=True, folderpat
     for i in range(length_detector_pixels):
         for j in range(length_detector_pixels):
             energy_of_pixel = bragg_eng.xyPixelImagePlane_to_energy(xPixel_imPlane=j, yPixel_imPlane=i)
-            solidAngle_of_pixel = solidAngle_engine.solidAngle_pixelij(i, j, number_points=1)
+            solidAngle_of_pixel = solidAngle_engine.solidAngle_pixelij(i, j, number_points=solid_angle_grid_width,)
             mat_Energy[i, j] = energy_of_pixel
             mat_Solid_Angle[i, j] = solidAngle_of_pixel
 
@@ -1278,6 +1292,8 @@ def save_energy_and_solid_angle_matrix(indexOfInterest, savefile=True, folderpat
         plt.title("Solid Angle Mapping of CCD image Plane")
         plt.colorbar(label="Solid Angle")
         plt.show()
+
+    return mat_Energy, mat_Solid_Angle
 
 def save_energy_mat(indexOfInterest, savefile=True, folderpath="stored_variables", ifplot=False, ):
     # Ensuring the folder is initialised
@@ -1587,7 +1603,6 @@ class Violin:
             plt.tight_layout()
             plt.show()
 
-
     def quadratic_params(self):
         vals_dict_left = {
             "A": [],
@@ -1724,7 +1739,6 @@ class Violin:
         plt.tight_layout()
         plt.show()
 
-
     def r_cam_ellipseVSquad(self,folderpath="stored_variables"):
 
         r_cam_ellipse = []
@@ -1751,6 +1765,64 @@ class Violin:
         plt.xticks([0, 1], ['Quadratic', 'Elliptical'])
 
         plt.title(r"$|\mathbf{r_{cam}}|$ Fitted Using Elliptical and Quadratic Lines", fontsize=16,)
+        plt.tight_layout()
+        plt.grid(True)
+        plt.show()
+
+    def crys_pitch_ellipseVsQuad(self,folderpath="stored_variables"):
+
+        crys_pitch_ellipse = []
+        crys_pitch_quad = []
+
+
+        for iOI in self.list_indexOI:
+            crysPitch, CrysRoll, CamPitch, CamRoll, rcam = access_saved_geometric(iOI)
+            crys_pitch_ellipse.append(crysPitch)
+
+            index_folder = os.path.join(folderpath, str(iOI))
+            filepath = os.path.join(index_folder, "geometric_fits_usingQuad.npy")
+
+            saved_variables = np.load(filepath)
+            crys_pitch_quad.append(saved_variables[0])
+
+        data = [crys_pitch_quad,crys_pitch_ellipse]
+
+        plt.figure(figsize=(7, 5))
+
+        sns.violinplot(data=data,inner=None)
+        sns.swarmplot(data=data, color='k', alpha=0.5, size=6)
+        plt.ylabel("Crystal Pitch (rad)")
+        plt.xticks([0, 1], ['Quadratic', 'Elliptical'])
+
+        plt.title("Crystal Pitch Fitted Using Elliptical and Quadratic Lines", fontsize=16,)
+        plt.tight_layout()
+        plt.grid(True)
+        plt.show()
+
+
+    def ellipse_error_c_vals(self,folderpath="stored_variables"):
+        vals_dict = {
+            "Left": [],
+            "Right": [],
+        }
+
+        for iOI in self.list_indexOI:
+            left_vars_y0ABc, right_vars_y0ABc, left_c_unc, right_c_unc = access_saved_ellipse(iOI,folderpath)
+            vals_dict["Left"].append(left_c_unc)
+            vals_dict["Right"].append(right_c_unc)
+
+        data = [vals_dict["Left"], vals_dict["Right"]]
+
+        plt.figure(figsize=(7, 5))
+
+        sns.violinplot(data=data, inner=None)
+        sns.swarmplot(data=data, color='k', alpha=0.5, size=6)
+        plt.ylabel(r"$|\mathbf{r_{cam}}|$ (m)")
+        plt.xticks([0, 1], ['Left', 'Right'])
+
+        title = r"Uncertainty in $c$" + "\n" + r"$" + ellipse_latex_string + r"$"
+
+        plt.title(title, fontsize=16, )
         plt.tight_layout()
         plt.grid(True)
         plt.show()
@@ -2018,7 +2090,9 @@ def test_geo_fitting(noise_level_left=0.05,noise_level_right=0.025,phi_step_size
 
 if __name__ == '__main__':
 
-    TestPlot(8,2).plot_energy_mats()
+    Violin().crys_pitch_ellipseVsQuad()
+
+    # TestPlot(8,2).plot_energy_mats()
 
     def geo_unit_test_tests():
         geo_utest = Geo_UnitTest()
