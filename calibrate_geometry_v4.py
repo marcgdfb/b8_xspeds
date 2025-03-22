@@ -14,7 +14,7 @@ import pandas as pd
 
 class Geometry:
     def __init__(self, crystal_pitch, crystal_roll, camera_pitch, camera_roll,
-                 r_cam, r_theta=2.567, xpixels=2048, ypixels=2048, pixelWidth=pixel_width, ):
+                 r_cam, r_theta=2.567, xpixels=2048, ypixels=2048, pixelWidth=pixel_width,declareVars=True ):
 
         def print_initialised_geo_params():
             print("\n" + "-"*30)
@@ -25,7 +25,8 @@ class Geometry:
             print("camera_roll:", camera_roll)
             print("r_cam:", r_cam)
 
-        print_initialised_geo_params()
+        if declareVars:
+            print_initialised_geo_params()
 
         self.crystal_pitch = crystal_pitch
         self.crystal_roll = crystal_roll
@@ -1242,12 +1243,12 @@ def access_saved_geometric(indexOfInterest, folderpath="stored_variables"):
     return crys_pitch, crys_roll, cam_pitch, cam_roll, r_cam
 
 
-def geo_engine_withSavedParams(index_oI):
+def geo_engine_withSavedParams(index_oI,declareVars=True):
     crys_pitch, crys_roll, cam_pitch, cam_roll, r_cam = access_saved_geometric(index_oI)
 
     geo_engine = Geometry(crystal_pitch=crys_pitch, crystal_roll=crys_roll,
                           camera_pitch=cam_pitch, camera_roll=cam_roll,
-                          r_cam=r_cam, )
+                          r_cam=r_cam, declareVars=declareVars )
 
     return geo_engine
 
@@ -1817,8 +1818,8 @@ class Violin:
 
         sns.violinplot(data=data, inner=None)
         sns.swarmplot(data=data, color='k', alpha=0.5, size=6)
-        plt.ylabel(r"$|\mathbf{r_{cam}}|$ (m)")
-        plt.xticks([0, 1], ['Left', 'Right'])
+        plt.ylabel("C Uncertainty (pixels)")
+        plt.xticks([0, 1], ['Left Line', 'Right Lineh'])
 
         title = r"Uncertainty in $c$" + "\n" + r"$" + ellipse_latex_string + r"$"
 
@@ -2090,7 +2091,8 @@ def test_geo_fitting(noise_level_left=0.05,noise_level_right=0.025,phi_step_size
 
 if __name__ == '__main__':
 
-    Violin().crys_pitch_ellipseVsQuad()
+    # Violin().crys_pitch_ellipseVsQuad()
+    Violin().ellipse_error_c_vals()
 
     # TestPlot(8,2).plot_energy_mats()
 

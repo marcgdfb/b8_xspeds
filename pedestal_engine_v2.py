@@ -7,10 +7,11 @@ import os
 # Considering how often this is used, could save mean and sigma to help reduce run time
 
 class Pedestal:
-    def __init__(self, imageMatrix, title_matrix, bins=300, pedestalOffset_adu=None):
+    def __init__(self, imageMatrix, title_matrix, bins=300, pedestalOffset_adu=None,declareVars=False):
         self.imageMatrix = imageMatrix
         self.title_matrix = title_matrix
         self.bins = bins
+        self.declareVars = declareVars
 
         if pedestalOffset_adu is None:
             self.pedestal_offset_adu = 25
@@ -25,8 +26,10 @@ class Pedestal:
         :return: A dictionary with keys 'mean', 'amplitude', 'sigma', 'x_1sigma', 'x_2sigma', 'x_3sigma'
         Each value is a list where the 0th value is its expected value and the 1st value is its uncertainty / standard deviation
         """
-        print("-" * 30)
-        print(f"Finding the gaussian for the pedestal for {self.title_matrix} with bins={self.bins} and adu offset {self.pedestal_offset_adu}")
+
+        if self.declareVars:
+            print("-" * 30)
+            print(f"Finding the gaussian for the pedestal for {self.title_matrix} with bins={self.bins} and adu offset {self.pedestal_offset_adu}")
         # Obtain Histogram Data, the function gives the edges of the bin
         hist_values, bin_edges = np.histogram(self.imageMatrix.flatten(), bins=self.bins)
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
@@ -71,8 +74,10 @@ class Pedestal:
         aOptimised_unc, x0Optimised_unc, sigmaOptimised_unc = unc
 
         # print(f"amplitude {aOptimised} +- {aOptimised_unc}")
-        print(f"mean {x0Optimised} +- {x0Optimised_unc}")
-        print(f"sigma {sigmaOptimised} +- {sigmaOptimised_unc}")
+
+        if self.declareVars:
+            print(f"mean {x0Optimised} +- {x0Optimised_unc}")
+            print(f"sigma {sigmaOptimised} +- {sigmaOptimised_unc}")
 
         gaussFit_dict = {
             "mean": [x0Optimised, x0Optimised_unc],
@@ -350,7 +355,7 @@ if __name__ == "__main__":
         plt.imshow(mat_oI, cmap='hot')
         plt.show()
 
-    plot_reduced_mat(11,2)
+    # plot_reduced_mat(11,2)
 
 
     def check_spcUsage(indexOfInterest):

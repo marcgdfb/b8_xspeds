@@ -1,32 +1,54 @@
-from legacy_code.spectrum_engine_v4 import *
+from spectrum_engine_v6 import *
 
 
-def main(saved_folderpath="stored_variables",use_saved_values=False,list_image_indices=list_data):
+def main(list_image_indices=list_data,saved_folderpath="stored_variables",bin_width=1.5):
     """
     :param list_image_indices:
     :param saved_folderpath: Folderpath for where values are/will be saved
-    :param use_saved_values: Use saved values
     :return:
     """
     print("main:")
     print("list_image_indices:", list_image_indices)
-    print("Using saved values:", use_saved_values)
-
-    if not use_saved_values:
-        calibrate_quadratic(list_indices=list_image_indices, folderpath=saved_folderpath)
-        calibrate_ellipse(list_indices=list_image_indices, folderpath=saved_folderpath)
-        calibrate_geometric(list_indices=list_image_indices, folderpath=saved_folderpath)
-        calibrate_energy_solidAngle(list_indices=list_image_indices, folderpath=saved_folderpath)
-        for index_image in list_image_indices:
-            solid_angle_per_energy_bin(index_image,bin_width=1,folderpath=saved_folderpath)
-            spectrum_eng = Spectrum(indexOfInterest=index_image,folderpath=saved_folderpath)
-            spectrum_eng.islandSpectrum_SolidAngle_with_uncertainty(bin_width=1,save=True)
 
 
+    for index_image in list_image_indices:
+        print(f"Working on image {index_image}\n")
+        print_current_datetime()
+        start_time = time.time()
 
+        # Checking for saved geometry calibration data. Saving in the case that it doesn't exist
+        try:
+            access_saved_ellipse(index_image,saved_folderpath)
+        except FileNotFoundError:
+            fit_ellipse(index_image, plot_Results=False, folderpath=saved_folderpath)
+        try:
+            access_saved_geometric(index_image,saved_folderpath)
+        except FileNotFoundError:
+            fit_geometry_to_ellipse(index_image,folderpath=saved_folderpath)
+
+        try:
+            index_folder = os.path.join(saved_folderpath, str(index_image))
+            energy_filepath = os.path.join(index_folder, "energy_of_pixel.npy")
+            np.load(energy_filepath)
+            solid_angle_filepath = os.path.join(index_folder, "solid_angle_of_pixel.npy")
+            np.load(solid_angle_filepath)
+        except FileNotFoundError:
+            save_energy_and_solid_angle_matrix(index_image,folderpath=saved_folderpath,solid_angle_grid_width=3)
+
+        geo_time = time.time()
+        minutes, seconds = divmod(geo_time- start_time, 60)
+        print(f"Geometry Initialisation runtime: {int(minutes)} minutes and {seconds:.2f} seconds")
+
+        # Has built in try
+        spectrum_eng = Spectrum_Island(index_image,folderpath=saved_folderpath,bin_width=1)
+        spectrum_eng.energy_list_island(save=True)
+
+    combined_spec_eng = Combine_Spectra(bin_width=bin_width,list_of_indices=list_image_indices,folderpath=saved_folderpath)
+    combined_spec_eng.average_normalised_corrected_spectra()
+    combined_spec_eng.plot_average_normalised_corrected_spectra()
 
 
 if __name__ == '__main__':
-    # main(list_image_indices=[11],)
+    main()
 
     pass

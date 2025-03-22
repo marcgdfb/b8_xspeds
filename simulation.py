@@ -7,6 +7,9 @@ Spectrum produced by plasma
 -> Fano factor + absorbtion probability in silicon / CCD
 """
 
+# Not Finished. Could consider more in depth unit test comibing this and the spc unit test engine to both fit geometry and
+# test photon counting engine
+
 def generate_spectrum(energy_start_eV=1090,energy_end_eV=1610,step=0.5,
                       energy_peaks_eV=None, peak_width=5, peak_height=100,
                       plotIm=False):

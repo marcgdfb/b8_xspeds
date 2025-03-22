@@ -8,7 +8,6 @@ from torch.nn import AvgPool2d, MaxPool2d
 import cv2
 matplotlib.use('TkAgg')
 
-
 def loadData():
     # The following code was provided by Sam Vinko, University of Oxford:
 
@@ -232,8 +231,6 @@ class Investigate:
         plt.title(title)
         plt.show()
 
-
-
 class Clean:
 
     @staticmethod
@@ -321,6 +318,34 @@ def imVeryClear(matrixOfInterest,thr=100,ktuple=(11,3)):
     mat_thr = np.where(matrixOfInterest > thr, matrixOfInterest, 0)
     return np.asarray(Convolve(mat_thr, ktuple).avgPool())
 
+# There is a consistent anomalous spot from direct reflection:
+
+def plot_two_matrices(matrix_1,matrix_2,
+                      title_1="",title_2="",
+                      title_main="",
+                      cmap="hot"):
+    plt.figure(figsize=(10, 5))
+    plt.suptitle(title_main,fontsize=16, y=0.95)
+    plt.subplot(1, 2, 1), plt.imshow(matrix_1, cmap=cmap), plt.title(title_1)
+    plt.subplot(1, 2, 2), plt.imshow(matrix_2, cmap=cmap), plt.title(title_2)
+
+
+    plt.show()
+
+
+
+def removeAnomaly(image_matrix):
+
+    image_matrix_copy = image_matrix.copy()
+    topLeft_corner_ij = (1391, 1753)
+    bottomRight_corner_ij= (1400, 1761)
+
+    image_matrix_copy[topLeft_corner_ij[0]:bottomRight_corner_ij[0]+1, topLeft_corner_ij[1]:bottomRight_corner_ij[1]+1] = 0
+
+    return image_matrix_copy
+
+
+
 
 imData = loadData()
 
@@ -351,6 +376,8 @@ if __name__ == '__main__':
             f"Image 8 Thresholded above {thr}")
         plt.show()
 
+
+    plot_two_matrices(array8Test,removeAnomaly(array8Test),)
 
     # plotRawMatThresholdedMat(1)
 

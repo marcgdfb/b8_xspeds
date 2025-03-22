@@ -3,8 +3,6 @@ from file_manipulation import *
 from spc_engine_5 import *
 
 
-
-
 if __name__ == "__main__":
     # Violin().geo_params_usingQuad()
     # Violin().geo_params()

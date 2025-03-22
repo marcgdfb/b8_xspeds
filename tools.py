@@ -1,5 +1,6 @@
 import math
 from constants import *
+from datetime import datetime
 
 # -----------Bragg-----------
 def bragg_E_to_theta(E_eV,d=d_beryl):
@@ -339,7 +340,13 @@ def callbackminimise(params):
     print(f"Iteration {minimise_count}")
     print(params)
 
+def runtime_minute_seconds(time_taken):
+    minutes, seconds = divmod(time_taken, 60)
+    return minutes, seconds
 
+def print_current_datetime():
+    current_time = datetime.now()
+    print(current_time.strftime("%Y-%m-%d %H:%M:%S"))
 
 def append_to_file(file_path, text):
     with open(file_path, "a", encoding="utf-8") as file:

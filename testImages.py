@@ -3,7 +3,6 @@ from constants import *
 from pedestal_engine_v2 import *
 from imagePreProcessing import *
 
-# TODO: Create more unit tests
 
 def generate_noisy_ellipse_Matrix(C, A, y0, B, noise_level=2.0):
     y_values = np.arange(start=0, stop=length_detector_pixels, step=1)
@@ -204,7 +203,7 @@ class SPC_Train_images:
         return clusterMat
 
     def createTestData(self,fillfraction=0.1, matrix_size=(100, 100), mean_adu=150, std_adu=30, seed=None,
-                       addAnomaly=True,return_mat_with_exact_hits=False):
+                       addAnomaly=False,return_mat_with_exact_hits=False):
         print("Creating Test Data")
 
         num_photons = int(matrix_size[0] * matrix_size[1] * fillfraction)

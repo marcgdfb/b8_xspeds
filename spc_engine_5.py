@@ -270,9 +270,9 @@ def plot_compare_singlePixel_ADU(list_indices=list_data, folderpath="stored_vari
 
 
 class Island_PhotonCounting:
-    def __init__(self, indexOfInterest, no_photon_adu_thr=80, sp_adu_thr=150, adu_offset=30, adu_cap=5000,
+    def __init__(self, indexOfInterest, no_photon_adu_thr=100, sp_adu_thr=150, adu_offset=30, adu_cap=5000,
                  removeRows0To_=0, howManySigma_thr=2, how_many_more_sigma=2,
-                 diagnostic_print=False):
+                 diagnostic_print=False,declareVars=True):
         """
         :param indexOfInterest: Image Matrix index of interest
         :param no_photon_adu_thr: The ADU total lower bound below which we reject the point
@@ -295,7 +295,8 @@ class Island_PhotonCounting:
                 print("Remove Rows 0 to: ", removeRows0To_)
             print(f"imMat has the mean removed and is then thresholded above {howManySigma_thr} sigma ")
 
-        printVar()
+        if declareVars:
+            printVar()
 
         imMatRAW = loadData()[indexOfInterest]
 
@@ -342,7 +343,9 @@ class Island_PhotonCounting:
         # plt.show()
 
     def operateOnIslands(self, image_matrix_replace=None, plot_checkedMat=False,
-                         diagnostic_of_large_islands=False, unit_test_correct_mat=None):
+                         diagnostic_of_large_islands=False, unit_test_correct_mat=None,
+                         Report=True):
+
         print("-" * 30)
         print("OperateOnIslands")
         results_dict = {
@@ -355,7 +358,6 @@ class Island_PhotonCounting:
             "list_countij": [],
         }
 
-        global noise_dominated_islands
         noise_dominated_islands = 0
 
         dict_multiphoton_counts = {}
@@ -456,10 +458,11 @@ class Island_PhotonCounting:
                     if self.diagnostic_print:
                         print(f"i ~ {i}, j~ {j}, totVal ~ {totVal}, numPoints = {numPoints}")
 
-                    mat_more_thr, list_count_ij_island_prime = self.operate_on_mini_island_matrix(
+                    mat_more_thr, list_count_ij_island_prime,noise_dominated_islands = self.operate_on_mini_island_matrix(
                         island_matrix=matrix_island,
                         num_photons_expected=numPhotons,
-                        how_many_more_sigma=self.how_many_more_sigma, )
+                        how_many_more_sigma=self.how_many_more_sigma,
+                        noise_dominated_islands=noise_dominated_islands)
 
                     if diagnostic_of_large_islands:
                         if numPhotons > 7:
@@ -481,15 +484,16 @@ class Island_PhotonCounting:
                         for row in list_count_ij_island_prime:
                             results_dict["list_countij"].append([row[0], row[1] + min_i, row[2] + min_j])
 
-        print("-" * 30)
-        print("Number of islands: ", results_dict["number_of_islands"])
-        print("Number rejected: ", results_dict["number_rejected"])
-        print("Number of counts: ", results_dict["number_of_photons"])
-        print("Number of ADU counts higher than capture: ", results_dict["number_higher_than_capture"])
-        print("Islands with just noise: ", noise_dominated_islands)
+        if Report:
+            print("-" * 30)
+            print("Number of islands: ", results_dict["number_of_islands"])
+            print("Number rejected: ", results_dict["number_rejected"])
+            print("Number of counts: ", results_dict["number_of_photons"])
+            print("Number of ADU counts higher than capture: ", results_dict["number_higher_than_capture"])
+            print("Islands with just noise: ", noise_dominated_islands)
 
-        for key in sorted(dict_multiphoton_counts.keys()):
-            print(f"There were {dict_multiphoton_counts[key]} events with {key} photons")
+            for key in sorted(dict_multiphoton_counts.keys()):
+                print(f"There were {dict_multiphoton_counts[key]} events with {key} photons")
 
         if plot_checkedMat:
             plt.imshow(checked_mat)
@@ -516,7 +520,7 @@ class Island_PhotonCounting:
         # plt.yscale('log')
         plt.show()
 
-    def operate_on_mini_island_matrix(self, island_matrix, num_photons_expected, how_many_more_sigma=1):
+    def operate_on_mini_island_matrix(self, island_matrix, num_photons_expected, how_many_more_sigma=1,noise_dominated_islands=None):
         # Find the position of photons
 
         if self.diagnostic_print:
@@ -532,15 +536,21 @@ class Island_PhotonCounting:
         total_remaining_adu = np.sum(islandmat_futher_thresholded)
         if total_remaining_adu < self.no_p_adu_thr:
             # print(f"Remaining noise at {self.how_many_more_sigma} sigma thresholding")
-            global noise_dominated_islands
-            noise_dominated_islands +=1
-            return islandmat_futher_thresholded, []
+            if noise_dominated_islands is not None:
+                noise_dominated_islands +=1
+                return islandmat_futher_thresholded, [], noise_dominated_islands
+            else:
+                return islandmat_futher_thresholded, []
 
         list_countij = self.scour_for_neighbours_miniIsland_mat(
             islandmat_futher_thresholded=islandmat_futher_thresholded.copy(),
             num_photons_expected=num_photons_expected,)
 
-        return islandmat_futher_thresholded, list_countij
+        if noise_dominated_islands is not None:
+            return islandmat_futher_thresholded, list_countij, noise_dominated_islands
+        else:
+            return islandmat_futher_thresholded, list_countij
+
 
     def scour_for_neighbours_miniIsland_mat(self, islandmat_futher_thresholded, num_photons_expected,):
         nrows, ncols = islandmat_futher_thresholded.shape
@@ -695,6 +705,8 @@ class Island_PhotonCounting:
             plt.subplot(1, 4, 3), plt.imshow(matrix_found, cmap='hot'), plt.title("Island Counted Photons")
             plt.subplot(1, 4, 4), plt.imshow(correctMat, cmap='hot'), plt.title("Unit Test Photons")
             plt.show()
+
+
 
 class Island_PC_with_presetShape:
     def __init__(self, indexOfInterest,
@@ -1305,6 +1317,161 @@ class Preset_Shape_PhotonCounting:
 
 
 class Unit_testing:
+    def __init__(self,index_of_interest=None):
+        self.index_of_interest = index_of_interest
+        self.mat_minus_Mean = matMinusMean(self.index_of_interest)
+
+
+    @staticmethod
+    def compare_islandPhotons_unit_test_hits(fillFrac=0.1, matrix_size=(2048, 2048), mean_adu=150, std_adu=10,
+                                             seed=125, no_photon_adu_thr=100, sp_adu_thr=150, adu_offset=30,
+                                             adu_cap=3000, diagnostics=True, diagnostic_of_large_islands=False):
+        print("compare_islandPhotons_unit_test_hits\n")
+        spcTrain = SPC_Train_images(2)
+
+        unit_test_mat, photon_hits_mat = spcTrain.createTestData(fillfraction=fillFrac, matrix_size=matrix_size,
+                                                                 mean_adu=mean_adu,
+                                                                 std_adu=std_adu, seed=seed,
+                                                                 addAnomaly=False, return_mat_with_exact_hits=True,
+                                                                 )
+
+        num_photons = fillFrac * matrix_size[0] * matrix_size[1]
+        print("The number of Photons created was: ", num_photons)
+
+        pc_eng = Island_PhotonCounting(8, no_photon_adu_thr=no_photon_adu_thr, sp_adu_thr=sp_adu_thr,
+                                       adu_offset=adu_offset,
+                                       adu_cap=adu_cap,
+                                       removeRows0To_=0, howManySigma_thr=2, )
+
+        results_dict = pc_eng.operateOnIslands(image_matrix_replace=unit_test_mat,
+                                               diagnostic_of_large_islands=diagnostic_of_large_islands,
+                                               unit_test_correct_mat=photon_hits_mat,)
+
+        mat_islandPhotons = np.zeros(matrix_size)
+        list_count_ij = results_dict["list_countij"]
+        for row in list_count_ij:
+            mat_islandPhotons[row[1], row[2]] = row[0]
+
+        mat_difference = photon_hits_mat - mat_islandPhotons
+
+        # success metric: how many photons are incorrectly
+
+        plt.figure(figsize=(12, 4))
+        plt.subplot(1, 4, 1), plt.imshow(unit_test_mat, cmap='hot'), plt.title("Unit test matrix")
+        plt.subplot(1, 4, 2), plt.imshow(photon_hits_mat, cmap='hot'), plt.title("Unit test photon hit matrix")
+        plt.subplot(1, 4, 3), plt.imshow(mat_islandPhotons, cmap='hot'), plt.title("Island Counted Photons")
+        plt.subplot(1, 4, 4), plt.imshow(mat_difference, cmap='hot'), plt.title("Difference")
+        plt.show()
+
+
+    def find_approximate_fill_fraction(self, threshold=100, sp_adu=150):
+        mat_minus_mean = self.mat_minus_Mean
+
+        nrows = mat_minus_mean.shape[0]
+        ncols = mat_minus_mean.shape[1]
+
+        mat_above_thr = np.where(mat_minus_mean > threshold, mat_minus_mean, 0)
+
+        total_adu = np.sum(mat_above_thr)
+
+        approx_N_photons = total_adu/sp_adu
+        n_pixels = nrows * ncols
+
+        fill_frac = approx_N_photons / n_pixels
+
+        return fill_frac
+
+
+    def find_uncertainty_in_spc_engine(self, diagnostics=False, unit_test_mat_size=(1000,1000)):
+        if self.index_of_interest is None:
+            raise ValueError("index_of_interest cannot be None")
+
+        fill_frac = self.find_approximate_fill_fraction()
+
+        if diagnostics:
+            print("\nPerforming Unit Test:")
+            print("The fill fraction is: ", fill_frac)
+
+        spcTrain = SPC_Train_images(how_many_sigma=2,indexOfInterest=self.index_of_interest,)
+        unit_test_mat, photon_hits_mat = spcTrain.createTestData(fillfraction=fill_frac, matrix_size=unit_test_mat_size,
+                                                                 mean_adu=150,
+                                                                 std_adu=20,return_mat_with_exact_hits=True)
+
+        pc_eng = Island_PhotonCounting(self.index_of_interest,diagnostic_print=False,declareVars=False)
+        results_dict = pc_eng.operateOnIslands(image_matrix_replace=unit_test_mat,unit_test_correct_mat=photon_hits_mat,Report=False )
+
+        mat_islandPhotons = np.zeros(unit_test_mat_size)
+        list_count_ij = results_dict["list_countij"]
+        for row in list_count_ij:
+            mat_islandPhotons[row[1], row[2]] = row[0]
+
+        mat_difference = photon_hits_mat - mat_islandPhotons
+
+        # success metric: how many photons are incorrectly
+
+        # If pixels are 1 away from one another then they cancel out. Otherwise collect
+        remaining_positives, remaining_negatives = self.cancel_adjacent_values_and_collect_remaining_elements(mat_difference)
+
+        if diagnostics:
+            print(f"The number of photons not captured and without nearby elements: ", remaining_positives)
+            print(f"The number of photons the model guesses that aren't real: ", remaining_negatives)
+        # The success Standard is based off the rate of guesses that are wrong
+
+        numPhotons = fill_frac*unit_test_mat_size[0]*unit_test_mat_size[1]
+
+        error_fraction = remaining_negatives / numPhotons
+        lost_fraction = remaining_positives/numPhotons
+        if diagnostics:
+            print("Total Photons = ", numPhotons)
+            print(f"error_fraction is {error_fraction}")
+            print(f"loss_fraction is {lost_fraction}")
+
+        if diagnostics:
+            plt.figure(figsize=(12, 4))
+            plt.subplot(1, 4, 1), plt.imshow(unit_test_mat, cmap='hot'), plt.title("Unit test matrix")
+            plt.subplot(1, 4, 2), plt.imshow(photon_hits_mat, cmap='hot'), plt.title("Unit test photon hit matrix")
+            plt.subplot(1, 4, 3), plt.imshow(mat_islandPhotons, cmap='hot'), plt.title("Island Counted Photons")
+            plt.subplot(1, 4, 4), plt.imshow(mat_difference, cmap='hot'), plt.title(f"Difference: Error of {error_fraction*100}%")
+            plt.show()
+
+        return error_fraction + lost_fraction
+
+
+    @staticmethod
+    def cancel_adjacent_values_and_collect_remaining_elements(matrix_OI):
+        rows, cols = matrix_OI.shape
+        changes = True
+
+        # Define 8-neighbor directions (adjacent and diagonal)
+        directions = [
+            (-1, -1), (-1, 0), (-1, 1),  # Top row
+            (0, -1), (0, 1),  # Sides
+            (1, -1), (1, 0), (1, 1)  # Bottom row
+        ]
+
+        while changes:
+            changes = False
+            new_matrix = matrix_OI.copy()
+
+            for i in range(rows):
+                for j in range(cols):
+                    if matrix_OI[i, j] == 1 or matrix_OI[i, j] == -1:
+                        for dr, dc in directions:
+                            nr, nc = i + dr, j + dc
+                            if 0 <= nr < rows and 0 <= nc < cols and matrix_OI[nr, nc] == -matrix_OI[i, j]:
+                                # Cancel out
+                                new_matrix[i, j] = 0
+                                new_matrix[nr, nc] = 0
+                                changes = True
+                                break
+
+            matrix_OI = new_matrix
+
+        # Count remaining +1s and -1s
+        remaining_positives = np.sum(matrix_OI == 1)
+        remaining_negatives = np.sum(matrix_OI == -1)
+
+        return remaining_positives, remaining_negatives
 
     @staticmethod
     def unitTest1(fillFrac=0.1, matrix_size=(2048, 2048), mean_adu=150, std_adu=10,
@@ -1347,46 +1514,6 @@ class Unit_testing:
         print(result.x)
 
     @staticmethod
-    def compare_islandPhotons_unit_test_hits(fillFrac=0.1, matrix_size=(2048, 2048), mean_adu=150, std_adu=10,
-                                             seed=125, no_photon_adu_thr=100, sp_adu_thr=150, adu_offset=30,
-                                             adu_cap=3000, diagnostics=True, diagnostic_of_large_islands=False):
-        print("compare_islandPhotons_unit_test_hits\n")
-        spcTrain = SPC_Train_images(2)
-
-        unit_test_mat, photon_hits_mat = spcTrain.createTestData(fillfraction=fillFrac, matrix_size=matrix_size,
-                                                                 mean_adu=mean_adu,
-                                                                 std_adu=std_adu, seed=seed,
-                                                                 addAnomaly=False, return_mat_with_exact_hits=True)
-
-        num_photons = fillFrac * matrix_size[0] * matrix_size[1]
-        print("The number of Photons created was: ", num_photons)
-
-        pc_eng = Island_PhotonCounting(8, no_photon_adu_thr=no_photon_adu_thr, sp_adu_thr=sp_adu_thr,
-                                       adu_offset=adu_offset,
-                                       adu_cap=adu_cap,
-                                       removeRows0To_=0, howManySigma_thr=2, )
-
-        results_dict = pc_eng.operateOnIslands(image_matrix_replace=unit_test_mat,
-                                               diagnostic_of_large_islands=diagnostic_of_large_islands,
-                                               unit_test_correct_mat=photon_hits_mat,)
-
-        mat_islandPhotons = np.zeros(matrix_size)
-        list_count_ij = results_dict["list_countij"]
-        for row in list_count_ij:
-            mat_islandPhotons[row[1], row[2]] = row[0]
-
-        mat_difference = photon_hits_mat - mat_islandPhotons
-
-        # success metric: how many photons are incorrectly
-
-        plt.figure(figsize=(12, 4))
-        plt.subplot(1, 4, 1), plt.imshow(unit_test_mat, cmap='hot'), plt.title("Unit test matrix")
-        plt.subplot(1, 4, 2), plt.imshow(photon_hits_mat, cmap='hot'), plt.title("Unit test photon hit matrix")
-        plt.subplot(1, 4, 3), plt.imshow(mat_islandPhotons, cmap='hot'), plt.title("Island Counted Photons")
-        plt.subplot(1, 4, 4), plt.imshow(mat_difference, cmap='hot'), plt.title("Difference")
-        plt.show()
-
-    @staticmethod
     def test_im8clusters():
         mat_cluster_1 = TestImages().image8_cluster_reducedScheme1()
         mat_cluster_2 = TestImages().image8_cluster_reducedScheme2()
@@ -1396,16 +1523,24 @@ class Unit_testing:
                                        removeRows0To_=0, howManySigma_thr=2, )
 
         print("Cluster1")
-        pc_eng.operateOnIslands(image_matrix_replace=mat_cluster_1,)
+        pc_eng.operateOnIslands(image_matrix_replace=mat_cluster_1, )
         print("Cluster2")
-        pc_eng.operateOnIslands(image_matrix_replace=mat_cluster_2,)
+        pc_eng.operateOnIslands(image_matrix_replace=mat_cluster_2, )
         print("Cluster3")
-        pc_eng.operateOnIslands(image_matrix_replace=mat_cluster_3,)
+        pc_eng.operateOnIslands(image_matrix_replace=mat_cluster_3, )
 
         image8ClusterShow()
 
 
+def access_unc_spc_eng(index_of_interest,folderpath="stored_variables"):
+    index_folder = os.path.join(folderpath,str(index_of_interest))
+
+
+
+
 if __name__ == "__main__":
+
+    Unit_testing(11).find_uncertainty_in_spc_engine(True)
 
     def investigate_totADU(indexOI, how_many_sigma=1):
         print("Investigating TOTAL ADU")
@@ -1435,8 +1570,7 @@ if __name__ == "__main__":
 
     # save_SinglePixel_ADU(plot=True,how_many_sigma=1,ylim=1000,save=False)
 
-    Unit_testing().compare_islandPhotons_unit_test_hits(fillFrac=0.05, matrix_size=(100, 100), diagnostics=True,
-                                                        diagnostic_of_large_islands=True)
+    # Unit_testing().compare_islandPhotons_unit_test_hits(fillFrac=0.1, matrix_size=(100, 100), diagnostics=True,diagnostic_of_large_islands=True)
 
 
     def test_mini_island_method(how_many_more_sigma=1):
