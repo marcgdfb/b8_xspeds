@@ -195,7 +195,7 @@ class SinglePixel:
         plt.show()
 
 
-def save_SinglePixel_ADU(list_indices=list_data, folderpath="stored_variables",
+def save_SinglePixel_ADU(list_indices=list_good_data, folderpath="stored_variables",
                          how_many_sigma=3, plot=False, save=True, ylim=None):
     adu_folderpath = os.path.join(folderpath, "ADU")
     if not os.path.exists(adu_folderpath):
@@ -236,7 +236,7 @@ def save_SinglePixel_ADU(list_indices=list_data, folderpath="stored_variables",
         plt.show()
 
 
-def plot_compare_singlePixel_ADU(list_indices=list_data, folderpath="stored_variables", ylim=None):
+def plot_compare_singlePixel_ADU(list_indices=list_good_data, folderpath="stored_variables", ylim=None):
     dict_adu_lists = {}
 
     adu_folderpath = os.path.join(folderpath, "ADU")
@@ -1599,7 +1599,7 @@ if __name__ == "__main__":
 
     # Unit_testing().test_im8clusters()
 
-    def CheckAllSinglePixelHist(indices_of_interest=list_data):
+    def CheckAllSinglePixelHist(indices_of_interest=list_good_data):
         print("Checking all single-pixel histograms")
         for index_ in indices_of_interest:
             SinglePixel(index_, 2).plot_adu_dist(bins=200)

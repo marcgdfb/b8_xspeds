@@ -3,7 +3,7 @@ from calibrate_geometry_v4 import *
 import re
 
 class FileManipulation:
-    def __init__(self,list_data_indices=list_data,folderpath="stored_variables"):
+    def __init__(self, list_data_indices=list_good_data, folderpath="stored_variables"):
         self.list_data_indices = list_data_indices
         self.folderpath = folderpath
 
@@ -218,7 +218,6 @@ def save_recent_logged_ellipse(iOI,folderpath="stored_variables"):
     np.save(filepath, ellipse_vars)
 
 
-# TODO: Compare matrices to see if there is a non neglibile difference between energy mappings:
 
 
 def compare_energy_matrices(index1,index2,folderpath="stored_variables"):

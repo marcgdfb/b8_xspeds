@@ -253,7 +253,7 @@ class Spectrum_Island:
 
     def energy_list_island(self,save=True):
 
-        filename = f"energy_list_bin_width_{self.bin_width}.npy"
+        filename = f"energy_list.npy"
         filepath = os.path.join(spectrum_folderpath(self.folderpath,self.indexOfInterest), filename)
 
         if self.use_saved_values:
@@ -425,7 +425,9 @@ class Spectrum_Island:
         if logarithmic:
             plt.yscale('log')
         plt.xlim(xBounds[0], xBounds[1])
+        plt.ylim(ymax=1.2)
         plt.grid(True)
+        plt.ylabel('Intensity (arb. unit)')
         plt.legend()
         plt.show()
 
@@ -827,11 +829,14 @@ class Combine_Spectra:
 
 
 if __name__ == "__main__":
+    # Spectrum_Island(8,bin_width=1.5).spectrum_compare_normalised_corrected_not_corrected()
+    # Spectrum_Island(11, bin_width=1.5).spectrum_compare_normalised_corrected_not_corrected()
+
     # Combine_Spectra(1,list_data,diagnostics=True).average_normalised_corrected_spectra(True)
 
     # Spectrum_Island(1,bin_width=1.5).solid_angle_array(True)
 
-    Combine_Spectra(1.5, [1,2,4,7,8,14],diagnostics=True).average_normalised_corrected_spectra(plot=True,use_temp_fileLocal=True)
+    # Combine_Spectra(1.5, [1,2,4,7,8,14],diagnostics=True).average_normalised_corrected_spectra(plot=True,use_temp_fileLocal=True)
 
     def investigate_new_spectrum_model(indexOI):
         spc_eng = Island_PhotonCounting(indexOfInterest=indexOI, no_photon_adu_thr=100, sp_adu_thr=150, adu_offset=30, adu_cap=5000,
@@ -867,22 +872,7 @@ if __name__ == "__main__":
 
     # setshapes_energy_lists(11)
 
-    # plot_all_individual_spectrums()
 
-    # generate_all_individual_spectrums()
-
-    # collect_savedSpectrums()
-    # plot_total_spectrum()
-
-    # check_spec(11,testPrint=True,remove_top_rows=0)
-
-    # printSaved_spec(11,)
-
-
-
-
-
-    # solid_angle_per_energy_bin(8,1,plotDistribtion=True,save=False)
 
 
 

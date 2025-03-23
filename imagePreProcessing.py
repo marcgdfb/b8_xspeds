@@ -353,10 +353,10 @@ list_darkNoPeaks = [3,5,9,12,13,15,18]
 list_dark_smallPeaks = [0,10]
 list_darkData = [0, 3, 5, 9, 10, 12, 13, 15, 18]
 
-list_data = []
+list_good_data = []
 for idx_data in range(len(imData)):
     if idx_data not in list_darkData:
-        list_data.append(idx_data)
+        list_good_data.append(idx_data)
 
 
 array8Test = imData[8]

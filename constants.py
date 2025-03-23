@@ -1,6 +1,16 @@
 import numpy as np
 
+def d_beryl_(a_beryl=9.21*10**-10,c_beryl=9.19*10**-10,miller_indices=None,):
+    if miller_indices is None:
+        miller_indices = [1,0,0]
+    h_idx = miller_indices[0]
+    k_idx = miller_indices[1]
+    l_idx = miller_indices[2]
+
+    return ((4/3)*(h_idx**2+k_idx**2+l_idx**2)/(a_beryl**2) + l_idx**2/c_beryl**2)**(-1/2)
+
 d_beryl = (15.96 / 2) * (10 ** -10)
+# d_beryl = d_beryl_()
 q_e = 1.602176634 * (10 ** -19)
 E_min_eV = 1100   # 0.78414658211633
 E_max_eV = 1600   # 0.5069659949953977

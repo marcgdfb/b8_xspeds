@@ -7,7 +7,6 @@ from datetime import datetime
 im8_filepath = r"old_logs_and_stored_variables/v1/data_logs\image_matrices\image_8"
 
 
-# TODO: test island searching algorithm with unit tests
 
 
 def kernelDict():

@@ -6,7 +6,6 @@ import time
 import pandas as pd
 import ast
 
-# TODO: save each individual spectrum count, uncertainty, SOlidAngle normalised count, uncertainty,
 
 
 class Spectrum:
@@ -668,7 +667,6 @@ class Spectrum_old:
 
 
 
-# TODO: make a graph with both solid angle corrected and non solid angle corrected!
 
 def accessSavedSpectrums(indexOfInterest,folderpath="stored_variables"):
     index_folder = os.path.join(folderpath, str(indexOfInterest))
@@ -828,7 +826,7 @@ def solid_angle_array(index_of_interest, bin_width=1, folderpath="stored_variabl
 
 
 
-def collect_savedSpectrums(bin_width=1, list_indices=list_data, folderpath="stored_variables",save=True):
+def collect_savedSpectrums(bin_width=1, list_indices=list_good_data, folderpath="stored_variables", save=True):
     topBin_dif = 700
     topBin_dif_binWidth_rounded = 700 // bin_width
 
@@ -987,10 +985,6 @@ def plot_total_spectrum(bin_width=1,folderpath="stored_variables"):
                                                )
 
 
-# TODO: get comparison of count and normalised + intensity count
-
-# TODO: Try 1.5 bin width, make code more modular for that
-
 
 if __name__ == "__main__":
     # collect_savedSpectrums()
@@ -1001,7 +995,7 @@ if __name__ == "__main__":
 
     def generate_all_individual_spectrums():
 
-        for index_ in list_data:
+        for index_ in list_good_data:
             spectrum = Spectrum_old(index_, removeTopRows=0,
                                     how_many_sigma=2, no_photon_adu_thr=80, sp_adu_thr=150, adu_offset=40, adu_cap=1600,
                                     )
@@ -1009,7 +1003,7 @@ if __name__ == "__main__":
 
 
     def plot_all_individual_spectrums():
-        for index_OI in list_data:
+        for index_OI in list_good_data:
             plot_individual_Saved_spec(index_OI)
 
 

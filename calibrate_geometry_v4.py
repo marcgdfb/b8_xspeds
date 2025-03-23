@@ -9,7 +9,6 @@ import os
 import pandas as pd
 
 
-# TODO: find and log uncertainty in values the C value for fitting
 
 
 class Geometry:
@@ -947,7 +946,7 @@ def fit_ellipse(indexOfInterest, left_bounds=None, right_bounds=None,
         y0_bounds = (700, 950)
         a_bounds = (6000, 8000)
         b_bounds = (6000, 8000)  # Note a_b similarity ==> encourages near circular like face
-        c_bounds = (1220, 1360)
+        c_bounds = (1220, 1340)
 
         left_bounds = [y0_bounds, a_bounds, b_bounds, c_bounds]
 
@@ -955,7 +954,7 @@ def fit_ellipse(indexOfInterest, left_bounds=None, right_bounds=None,
         y0_bounds = (700, 950)
         a_bounds = (6000, 8000)
         b_bounds = (6000, 8000)
-        c_bounds = (1360, 1500)
+        c_bounds = (1380, 1460)
 
         right_bounds = [y0_bounds, a_bounds, b_bounds, c_bounds]
 
@@ -1257,6 +1256,8 @@ def geo_engine_withSavedParams(index_oI,declareVars=True):
 
 def save_energy_and_solid_angle_matrix(indexOfInterest, savefile=True, folderpath="stored_variables", ifplot=False, solid_angle_grid_width=10 ):
     # Ensuring the folder is initialised
+    print("-"*30)
+    print("Saving Energy and Solid Angle Matrices")
     index_folder = os.path.join(folderpath, str(indexOfInterest))
     if not os.path.exists(index_folder):
         os.makedirs(index_folder)
@@ -1353,7 +1354,7 @@ def save_solidAngle_mat(indexOfInterest, savefile=True, folderpath="stored_varia
 
 
 class Calibrate:
-    def __init__(self,list_indices=list_data, folderpath="stored_variables"):
+    def __init__(self, list_indices=list_good_data, folderpath="stored_variables"):
         self.list_indices = list_indices
         self.folderpath = folderpath
 
@@ -1574,7 +1575,7 @@ class TestPlot:
         plt.show()
 
 class Violin:
-    def __init__(self,list_indexOI=list_data):
+    def __init__(self, list_indexOI=list_good_data):
         self.list_indexOI = list_indexOI
 
     @staticmethod
@@ -2105,7 +2106,7 @@ if __name__ == '__main__':
 
     # test_geo_fitting()
 
-    def calibrate_all(list_indices=list_data, folder_path="stored_variables"):
+    def calibrate_all(list_indices=list_good_data, folder_path="stored_variables"):
 
         cal = Calibrate(list_indices,folder_path)
         cal.calibrate_quadratic()
@@ -2115,14 +2116,14 @@ if __name__ == '__main__':
         cal.calibrate_energy_solidAngle()
 
 
-    def calibrate_oneType(list_indices=list_data, folder_path="stored_variables"):
+    def calibrate_oneType(list_indices=list_good_data, folder_path="stored_variables"):
         cal = Calibrate(list_indices,folder_path)
         # cal.calibrate_geometric_usingQuad()
         cal.calibrate_quadratic()
 
     # calibrate_oneType()
 
-    def plotAllGeometryLines(list_indices=list_data, folder_path="stored_variables"):
+    def plotAllGeometryLines(list_indices=list_good_data, folder_path="stored_variables"):
         print("plotAllGeometryLines")
         for index_ in list_indices:
             testPlot = TestPlot(index_,2)

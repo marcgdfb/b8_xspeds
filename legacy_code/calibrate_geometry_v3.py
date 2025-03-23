@@ -1222,7 +1222,7 @@ if __name__ == '__main__':
         plt.show()
 
 
-    def calibrate_quadratics(list_indices=list_data):
+    def calibrate_quadratics(list_indices=list_good_data):
 
         print("calibrate_quadratics")
         for indexOI in list_indices:
@@ -1234,7 +1234,7 @@ if __name__ == '__main__':
                                           )
 
 
-    def calibrate_geometric(list_indices=list_data):
+    def calibrate_geometric(list_indices=list_good_data):
 
         print("calibrate_geometric")
         for indexOI in list_indices:
