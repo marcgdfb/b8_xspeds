@@ -251,7 +251,11 @@ def plot_solidAngle(indexOI,folderpath="stored_variables"):
 
 
 if __name__ == "__main__":
-    compare_energy_matrices(7,8)
+
+    # FileManipulation().geometric_excel_append()
+
+    compare_energy_matrices(11,8)
+    # compare_energy_matrices(6, nces2)
 
     # FileManipulation().plotLoss_quadVSelipse()
 
