@@ -227,12 +227,12 @@ class Spectrum_Island:
 
 
         if len(l_sa_bin_centers) == len(bin_centers):
-            l_solid_angle =solid_angle_vals
+            l_solid_angle = solid_angle_vals
         else:
-            l_solid_angle = [
-                solid_angle_vals[l_sa_bin_centers.index(bin_center)] if bin_center in l_sa_bin_centers else 0
-                for bin_center in bin_centers
-            ]
+            l_solid_angle = np.zeros_like(bin_centers, dtype=solid_angle_vals.dtype)
+            mask = np.isin(bin_centers, l_sa_bin_centers)
+
+            l_solid_angle[mask] = solid_angle_vals[np.searchsorted(l_sa_bin_centers, bin_centers[mask])]
 
         if diagnostic:
             print("length bin center", len(bin_centers))
@@ -281,9 +281,12 @@ class Spectrum_Island:
 
         return arr_energy_list
 
-    def compute_uncertainy(self, hist_count):
+    def compute_uncertainty(self, hist_count):
         unc_spc_eng = hist_count * self.pc_eng_error_fraction
         unc_poisson = np.sqrt(hist_count)
+
+        # print("PC engine uncertainty", unc_spc_eng)
+        # print("Poisson Uncertainty: ", unc_poisson)
         # adding in quadrature
         return np.sqrt(unc_spc_eng**2 + unc_poisson**2)
 
@@ -296,7 +299,7 @@ class Spectrum_Island:
 
         l_uncertainty = []
         for count_hist in hist_counts:
-            l_uncertainty.append(self.compute_uncertainy(count_hist))
+            l_uncertainty.append(self.compute_uncertainty(count_hist))
 
         if normalised:
             arr_return_hist_counts, arr_return_unc = self.normalise_array_and_uncertainty(
@@ -307,7 +310,7 @@ class Spectrum_Island:
 
         return bin_centers, arr_return_hist_counts, arr_return_unc
 
-    def corrected_count_array(self,):
+    def corrected_count_array_unity(self, ):
         energyList = self.energy_list_island()
         energyBins = self.bin_edges_array()
         photonEnergies = np.array(energyList)
@@ -325,7 +328,7 @@ class Spectrum_Island:
                 l_corrected_unc.append(0)
                 continue
 
-            unc = self.compute_uncertainy(hist_count)
+            unc = self.compute_uncertainty(hist_count)
 
             intensity_corrected_count = hist_count * energy_bin_center
             intensity_corrected_unc = unc * energy_bin_center
@@ -342,6 +345,41 @@ class Spectrum_Island:
         norm_corrected_count, norm_corrected_unc = self.normalise_array_and_uncertainty(arr_corrected_count,arr_corrected_unc)
 
         return bin_centers, norm_corrected_count, norm_corrected_unc
+
+    def corrected_count_array(self, ):
+        energyList = self.energy_list_island()
+        energyBins = self.bin_edges_array()
+        photonEnergies = np.array(energyList)
+        hist_counts, bins_edges = np.histogram(photonEnergies, energyBins)
+        bin_centers = self.bin_centers_array(bins_edges)
+
+        arr_solid_angle = self.solid_angle_array()
+
+        l_corrected_count = []
+        l_corrected_unc = []
+
+        for energy_bin_center, hist_count, solid_angle in zip(bin_centers,hist_counts, arr_solid_angle):
+            if hist_count == 0:
+                l_corrected_count.append(0)
+                l_corrected_unc.append(0)
+                continue
+
+            unc = self.compute_uncertainty(hist_count)
+
+            intensity_corrected_count = hist_count * energy_bin_center
+            intensity_corrected_unc = unc * energy_bin_center
+
+            solid_angle_corrected_count = intensity_corrected_count / solid_angle
+            solid_angle_corrected_unc = intensity_corrected_unc / solid_angle
+
+            l_corrected_count.append(solid_angle_corrected_count)
+            l_corrected_unc.append(solid_angle_corrected_unc)
+
+        arr_corrected_count = np.array(l_corrected_count)
+        arr_corrected_unc = np.array(l_corrected_unc)
+
+        return bin_centers, arr_corrected_count, arr_corrected_unc
+
 
     def spectrum_energy_list_island(self,intensity_arb_unit=False, logarithmic=False,):
 
@@ -375,7 +413,7 @@ class Spectrum_Island:
         plt.show()
 
     def spectrum_normalised_corrected_count(self,logarithmic=False,xBounds=(1100,1600)):
-        bin_centers, norm_corrected_count, norm_corrected_unc = self.corrected_count_array()
+        bin_centers, norm_corrected_count, norm_corrected_unc = self.corrected_count_array_unity()
 
         plt.figure(figsize=(10, 6))
         plt.plot(bin_centers, norm_corrected_count, linestyle='-', color='b', label='Corrected Count')
@@ -402,7 +440,7 @@ class Spectrum_Island:
 
     def spectrum_compare_normalised_corrected_not_corrected(self,logarithmic=False,xBounds = (1100,1600)):
 
-        bin_centers, norm_corrected_count, norm_corrected_unc = self.corrected_count_array()
+        bin_centers, norm_corrected_count, norm_corrected_unc = self.corrected_count_array_unity()
         bin_centers, arr_return_hist_counts, arr_return_unc = self.non_corrected_array()
 
         plt.figure(figsize=(10, 6))
@@ -713,8 +751,8 @@ class Combine_Spectra:
 
     def corrected_count_and_unc_filepaths(self):
         bw_folderpath = self.bin_width_sub_folderpath()
-        count_filename = f"combined_corrected_counts"
-        unc_filename = "combined_corrected_uncertainties"
+        count_filename = f"combined_corrected_counts.npy"
+        unc_filename = "combined_corrected_uncertainties.npy"
         return os.path.join(bw_folderpath, count_filename), os.path.join(bw_folderpath, unc_filename)
 
 
@@ -727,8 +765,8 @@ class Combine_Spectra:
 
         if use_temp_fileLocal:
             bw_folderpath = self.bin_width_sub_folderpath()
-            count_filename = f"reduced_list_combined_corrected_counts"
-            unc_filename = "reduced_list_combined_corrected_uncertainties"
+            count_filename = f"reduced_list_combined_corrected_counts.npy"
+            unc_filename = "reduced_list_combined_corrected_uncertainties.npy"
             fp_count=os.path.join(bw_folderpath, count_filename)
             fp_unc=os.path.join(bw_folderpath, unc_filename)
         else:
@@ -753,7 +791,7 @@ class Combine_Spectra:
             for index_OI in self.list_of_indices:
                 specIsland_eng = Spectrum_Island(index_OI,folderpath=self.folderpath,bin_width=self.bin_width,
                                                  declareVars=False)
-                bin_centers, norm_corrected_count, norm_corrected_unc = specIsland_eng.corrected_count_array()
+                bin_centers, norm_corrected_count, norm_corrected_unc = specIsland_eng.corrected_count_array_unity()
 
                 if self.diagnostics:
                     print("count length: ", len(norm_corrected_count))
@@ -825,10 +863,85 @@ class Combine_Spectra:
         plt.legend()
         plt.show()
 
+    def compare_all_spectra_not_normalised_to_unity(self,logarithmic=False):
+        plt.figure(figsize=(10, 6))
+        for index_OI in self.list_of_indices:
+            spec_eng = Spectrum_Island(index_OI,folderpath=self.folderpath,bin_width=self.bin_width,declareVars=False)
+            bin_centers, norm_corrected_count, norm_corrected_unc = spec_eng.corrected_count_array()
+            plt.plot(bin_centers, norm_corrected_count, linestyle='-', label= f'Image {index_OI}')
+            # Add shaded uncertainty region
+            plt.fill_between(
+                bin_centers,
+                norm_corrected_count - norm_corrected_unc,
+                norm_corrected_count + norm_corrected_unc,
+                alpha=0.2,
+                label='Uncertainty'
+            )
+
+        plt.ylabel('Intensity (arb. unit)')
+        plt.xlabel('Energy (eV)')
+        plt.title(f"Solid Angle Normalised Energy Spectra")
+        plt.grid(True)
+        if logarithmic:
+            plt.yscale('log')
+
+        plt.legend()
+        plt.show()
+
+
+    def compare_im8_11(self,logarithmic=False):
+        spec8 = Spectrum_Island(8, bin_width=self.bin_width)
+        spec11 = Spectrum_Island(11, bin_width=self.bin_width)
+        bin_centers, norm_corrected_count8, norm_corrected_unc8 = spec8.corrected_count_array()
+        bin_centers, norm_corrected_count11, norm_corrected_unc11 = spec11.corrected_count_array()
+
+        plt.figure(figsize=(10, 6))
+
+        # im 8
+        plt.plot(bin_centers, norm_corrected_count8, linestyle='-', color='b', label='Image 8')
+        # Add shaded uncertainty region
+        plt.fill_between(
+            bin_centers,
+            norm_corrected_count8 - norm_corrected_unc8,
+            norm_corrected_count8 + norm_corrected_unc8,
+            color='b',
+            alpha=0.2,
+            label='Uncertainty'
+        )
+        # im 11
+        plt.plot(bin_centers, norm_corrected_count11, linestyle='-', color='g', label='Image 11')
+        # Add shaded uncertainty region
+        plt.fill_between(
+            bin_centers,
+            norm_corrected_count11 - norm_corrected_unc11,
+            norm_corrected_count11 + norm_corrected_unc11,
+            color='g',
+            alpha=0.2,
+            label='Uncertainty'
+        )
+
+        plt.ylabel('Intensity (arb. unit)')
+        plt.xlabel('Energy (eV)')
+        plt.title(f"Solid Angle Normalised Energy Spectra of Images 8 and 11")
+        plt.grid(True)
+        plt.legend()
+        if logarithmic:
+            plt.yscale('log')
+        plt.show()
 
 
 
 if __name__ == "__main__":
+
+    Combine_Spectra(bin_width=1.5,list_of_indices=list_good_data).compare_im8_11()
+
+    def investigate_unc(list_indices=list_good_data):
+        for im_idx in list_indices:
+            spec_eng = Spectrum_Island(im_idx)
+            spec_eng.corrected_count_array_unity()
+
+    # investigate_unc()
+
     # Spectrum_Island(8,bin_width=1.5).spectrum_compare_normalised_corrected_not_corrected()
     # Spectrum_Island(11, bin_width=1.5).spectrum_compare_normalised_corrected_not_corrected()
 

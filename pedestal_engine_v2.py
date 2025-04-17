@@ -232,6 +232,27 @@ class Visualise_Pedestal:
         plt.show()
 
     @staticmethod
+    def top_rank_image_compare(indexOI,Nsigma=2):
+
+        mat_hms, thr1 = mat_minusMean_thr_aboveNsigma(indexOI,Nsigma)
+        mat_hms_plus_1, thr2 = mat_minusMean_thr_aboveNsigma(indexOI,Nsigma+1)
+
+        title_1 = rf"{Nsigma} $\sigma$ Threshold"
+        title_2 = rf"{Nsigma+1} $\sigma$ Threshold"
+        title_main = f"Top-Left of Image {indexOI} at different thresholds: "
+
+        sub_mat1 = mat_hms[0:101,0:101]
+        sub_mat2 = mat_hms_plus_1[0:101,0:101]
+
+        plt.figure(figsize=(6, 6))
+        plt.suptitle(title_main, fontsize=12, y=0.96 )
+        plt.subplot(1, 2, 1), plt.imshow(sub_mat1, cmap="hot"), plt.title(title_1)
+        plt.subplot(1, 2, 2), plt.imshow(sub_mat2, cmap="hot"), plt.title(title_2)
+
+        plt.tight_layout()
+        plt.show()
+
+    @staticmethod
     def sum_all_images():
         mat_im_sum = np.zeros((2048, 2048))
         folderpath = "Misc_images"
@@ -250,8 +271,9 @@ class Visualise_Pedestal:
 
         plt.imshow(mat_im_sum, cmap='turbo')
         plt.title("Matrix Sum of All Raw Images")
-        plt.ylabel("Image j Index")
-        plt.xlabel("Image i Index")
+        plt.ylabel("j index (pixels)")
+        plt.xlabel("i index (pixels)")
+        plt.colorbar(label="ADU")
         plt.show()
 
     @staticmethod
@@ -347,7 +369,8 @@ def plot_sigmaThr_mat(indexOI=8,how_many_sigma=2):
 
 if __name__ == "__main__":
 
-    # Visualise_Pedestal().top_rank_thresholding(11,2)
+    # Visualise_Pedestal().top_rank_image_compare(11,2)
+    Visualise_Pedestal().sum_all_images()
 
     def plot_reduced_mat(indexOI,NSigma):
         mat_oI, thr = mat_minusMean_thr_aboveNsigma(indexOI,NSigma)

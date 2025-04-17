@@ -1,5 +1,6 @@
 from spectrum_engine_v6 import *
 
+# Could change bin widths such that the left peak is properly centered as opposed to on the far edge,
 
 def main(list_image_indices=list_good_data, saved_folderpath="stored_variables", bin_width=1.5):
     """
@@ -52,9 +53,10 @@ def main(list_image_indices=list_good_data, saved_folderpath="stored_variables",
 
     combined_spec_eng = Combine_Spectra(bin_width=bin_width,list_of_indices=list_image_indices,folderpath=saved_folderpath)
     combined_spec_eng.plot_average_normalised_corrected_spectra()
+    # combined_spec_eng.compare_all_spectra_not_normalised_to_unity(logarithmic=True)
 
 
 if __name__ == '__main__':
-    main()
+    main(bin_width=1.5)
 
     pass

@@ -1364,7 +1364,7 @@ class Unit_testing:
         plt.show()
 
 
-    def find_approximate_fill_fraction(self, threshold=100, sp_adu=150):
+    def find_approximate_fill_fraction(self, threshold=60, sp_adu=150):
         mat_minus_mean = self.mat_minus_Mean
 
         nrows = mat_minus_mean.shape[0]
@@ -1421,10 +1421,20 @@ class Unit_testing:
 
         error_fraction = remaining_negatives / numPhotons
         lost_fraction = remaining_positives/numPhotons
+
+        remaining_positives_without_cancellation = np.sum(mat_difference == 1)
+        remaining_negatives_without_cancellation = np.sum(mat_difference == -1)
+        ef_without_cancel = remaining_positives_without_cancellation/numPhotons
+        lf_without_cancel = remaining_negatives_without_cancellation/numPhotons
+
         if diagnostics:
             print("Total Photons = ", numPhotons)
             print(f"error_fraction is {error_fraction}")
             print(f"loss_fraction is {lost_fraction}")
+
+            print("without adjacent cancellation:")
+            print(f"error_fraction is {ef_without_cancel}")
+            print(f"loss_fraction is {lf_without_cancel}")
 
         if diagnostics:
             plt.figure(figsize=(12, 4))
@@ -1540,7 +1550,15 @@ def access_unc_spc_eng(index_of_interest,folderpath="stored_variables"):
 
 if __name__ == "__main__":
 
-    Unit_testing(11).find_uncertainty_in_spc_engine(True)
+    def test_OperateOnIslands(indexOI):
+        pc_eng = Island_PhotonCounting(indexOI,)
+        pc_eng.operateOnIslands()
+
+
+    # test_OperateOnIslands(8)
+    # test_OperateOnIslands(11)
+
+    # Unit_testing(11).find_uncertainty_in_spc_engine(True)
 
     def investigate_totADU(indexOI, how_many_sigma=1):
         print("Investigating TOTAL ADU")

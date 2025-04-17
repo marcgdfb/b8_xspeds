@@ -1,5 +1,14 @@
 X-ray Single Photon Energy Dispersive Spectroscopy Program
 
+Inputs:
+- List of Image Matrices produced by XSPEDS experiments
+- Energy of photons from emission lines visible on the CCD
+- Pixel width of the CCD
+- Interplanar spacing of crystal used
+
+Outputs:
+- Spectrum with optimised SNR and energy resolution.
+
 This program was built upon data with two clear peaks due to the L-$\alpha$ and L-$\beta$ emission lines of Germanium.
 
 All saved variables are put within a folder "stored_variables" that is within the program 
@@ -24,9 +33,6 @@ string s.t. 1 denotes the 2nd in the list
     a photon and its energy. 
     - FIle: "solid_angle_of_bin_width_().xlsx" where () is replaced by the relevant bin width. Excel
     file containing the solid angle associated with that energy bin
-
-
-For photos and notes made in the process of making this see https://miro.com/welcomeonboard/QUM2cCtDaDhjRmtNQmw0dXVzSkFZNm5XYUZRcEh6WVkrbDRnMVN3VkN3eTVtZmUrSTZSQ2k3M1EzNFVYZ2djdDg0WEtjVlpPNnE5aWJ2OTczaUtWUFBDL3J6NTl6NFpXaXY2SG1nTndrK29BK0NLTWVmT1JOelJvOGdmcENYTVl0R2lncW1vRmFBVnlLcVJzTmdFdlNRPT0hdjE=?share_link_id=640928823258
 
 Important Human Inputs:
 - The bounds of the parameters of the ellipse are quite important 

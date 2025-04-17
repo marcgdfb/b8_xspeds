@@ -219,7 +219,6 @@ def save_recent_logged_ellipse(iOI,folderpath="stored_variables"):
 
 
 
-
 def compare_energy_matrices(index1,index2,folderpath="stored_variables"):
     index_folder1 = os.path.join(folderpath, str(index1))
     index_folder2 = os.path.join(folderpath, str(index2))
@@ -231,10 +230,10 @@ def compare_energy_matrices(index1,index2,folderpath="stored_variables"):
 
     mat_dif = energy_mat_1 - energy_mat_2
     plt.imshow(mat_dif,cmap='GnBu')
-    plt.title(f"Energy Gradient difference for image {index1} - {index2}")
+    plt.title(f"Energy Gradient difference for image {index1} - {index2}",fontsize=16)
     plt.colorbar(label="Energy Difference (eV)")
-    plt.ylabel("j index")
-    plt.xlabel("i index")
+    plt.ylabel("i index (pixels)",fontsize=14)
+    plt.xlabel("j index (pixels)",fontsize=14)
     plt.show()
 
 def plot_solidAngle(indexOI,folderpath="stored_variables"):
@@ -254,7 +253,7 @@ if __name__ == "__main__":
 
     # FileManipulation().geometric_excel_append()
 
-    compare_energy_matrices(11,8)
+
     # compare_energy_matrices(6, nces2)
 
     # FileManipulation().plotLoss_quadVSelipse()

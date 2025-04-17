@@ -508,7 +508,7 @@ class Quadratic_Fit:
 
         return linesMatrix
 
-ellipse_latex_string = r"c + A - A \cdot \sqrt{1 - \frac{(y - y_0)^2}{B^2}}"
+ellipse_latex_string = r"C + A - A \cdot \sqrt{1 - \frac{(y - y_0)^2}{B^2}}"
 
 class Ellipse_Fit:
     def __init__(self, imageMatrix, logTextFile=None, adjacentWeight=0.5,
@@ -574,7 +574,7 @@ class Ellipse_Fit:
 
         return list_integrals_of_c
 
-    def fitGaussian(self, params_Y0_A_B, c_Bounds, plot_gauss=False):
+    def fitGaussian(self, params_Y0_A_B, c_Bounds, plot_gauss=False, title=None):
         count_runtimeError = 0
 
         line_integrals_of_c = self.line_integral_across_CBounds(params_Y0_A_B, c_Bounds)
@@ -596,10 +596,18 @@ class Ellipse_Fit:
             params_gauss, pcov = curve_fit(gaussian_, cVals, lineIntegralVals, p0=gauss_guess, maxfev=2000)
 
             if plot_gauss:
+                plt.figure(figsize=(12, 8))
                 plt.plot(cVals, lineIntegralVals)
                 plt.plot(cVals, gaussian_(cVals, *params_gauss))
-                plt.ylabel("Line Integral with width 3 pixels")
-                plt.xlabel("C value in x = C+A-A sqrt(1- (y-y0)**2 / B**2)")
+
+                if title is not None:
+                    plt.title(title + " with gaussian weighted line width of 5 pixels")
+                    plt.ylabel("Line Integral (ADU)")
+                    plt.xlabel("C value in "+r"$" + ellipse_latex_string + r"$")
+
+                else:
+                    plt.ylabel("Line Integral a gaussian weighted width of 5 pixels")
+                    plt.xlabel("C value in "+r"$" + ellipse_latex_string + r"$")
                 plt.show()
 
             params_unc = np.sqrt(np.diag(pcov))
@@ -1006,7 +1014,12 @@ def access_saved_ellipse(indexOfInterest, folderpath="stored_variables"):
 
     return left_vars, right_vars, left_c_unc, right_c_unc
 
-
+def saved_ellipse_gaussPlot(indexOfInterest, folderpath="stored_variables",howManySigma=2):
+    left_vars, right_vars, left_c_unc, right_c_unc = access_saved_ellipse(indexOfInterest, folderpath)
+    image_mat, thr = mat_thr_aboveNsigma(indexOfInterest, howManySigma)
+    ellipse_eng = Ellipse_Fit(image_mat,)
+    ellipse_eng.fitGaussian(left_vars[:-1],c_Bounds=(1220, 1340),plot_gauss=True,title=f"Image {indexOfInterest} Left Line")
+    ellipse_eng.fitGaussian(right_vars[:-1], c_Bounds=(1380, 1460), plot_gauss=True,title=f"Image {indexOfInterest} Right Line")
 
 # ---------- Calibration and saving of Geometric Parameters:
 
@@ -1763,8 +1776,8 @@ class Violin:
 
         sns.violinplot(data=data,inner=None)
         sns.swarmplot(data=data, color='k', alpha=0.5, size=6)
-        plt.ylabel(r"$|\mathbf{r_{cam}}|$ (m)")
-        plt.xticks([0, 1], ['Quadratic', 'Elliptical'])
+        plt.ylabel(r"$|\mathbf{r_{cam}}|$ (m)",fontsize=14)
+        plt.xticks([0, 1], ['Quadratic', 'Elliptical'],fontsize=14)
 
         plt.title(r"$|\mathbf{r_{cam}}|$ Fitted Using Elliptical and Quadratic Lines", fontsize=16,)
         plt.tight_layout()
@@ -1801,6 +1814,34 @@ class Violin:
         plt.grid(True)
         plt.show()
 
+    def ellipse_c_vals(self,folderpath="stored_variables"):
+        vals_dict = {
+            "Left": [],
+            "Right": [],
+        }
+
+        for iOI in self.list_indexOI:
+            left_vars_y0ABc, right_vars_y0ABc, left_c_unc, right_c_unc = access_saved_ellipse(iOI,folderpath)
+            vals_dict["Left"].append(left_vars_y0ABc[-1])
+            vals_dict["Right"].append(right_vars_y0ABc[-1])
+
+        data = [vals_dict["Left"], vals_dict["Right"]]
+
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5), )
+        sns.violinplot(data=data[0], inner=None, ax=axes[0])
+        sns.swarmplot(data=data[0], color='k', alpha=0.5, size=6, ax=axes[0])
+        axes[0].set_title("Left Line")
+        axes[0].set_ylabel("C (pixels)")
+        axes[0].grid(True)
+
+        sns.violinplot(data=data[1], inner=None, ax=axes[1])
+        sns.swarmplot(data=data[1], color='k', alpha=0.5, size=6, ax=axes[1])
+        axes[1].set_title("Right Line")
+        axes[1].grid(True)
+
+        fig.suptitle(r"$C$ in " + "\n" + r"$" + ellipse_latex_string + r"$", fontsize=16)
+        plt.tight_layout()
+        plt.show()
 
     def ellipse_error_c_vals(self,folderpath="stored_variables"):
         vals_dict = {
@@ -1819,12 +1860,12 @@ class Violin:
 
         sns.violinplot(data=data, inner=None)
         sns.swarmplot(data=data, color='k', alpha=0.5, size=6)
-        plt.ylabel("C Uncertainty (pixels)")
-        plt.xticks([0, 1], ['Left Line', 'Right Lineh'])
+        plt.ylabel("C Uncertainty (pixels)", fontsize=14)
+        plt.xticks([0, 1], ['Left Line', 'Right Line'], fontsize=14)
 
-        title = r"Uncertainty in $c$" + "\n" + r"$" + ellipse_latex_string + r"$"
+        # title = r"Uncertainty in $c$" + "\n" + r"$" + ellipse_latex_string + r"$"
 
-        plt.title(title, fontsize=16, )
+        # plt.title(title, fontsize=16, )
         plt.tight_layout()
         plt.grid(True)
         plt.show()
@@ -2084,16 +2125,27 @@ def test_geo_fitting(noise_level_left=0.05,noise_level_right=0.025,phi_step_size
         plt.plot(ut_x_coords_bet, ut_y_coords_bet, color="blue", linewidth=2, linestyle="--", label="Unit Test Line (Beta)",alpha=0.8)
         plt.plot(ut_x_coords_alp, ut_y_coords_alp, color="blue", linewidth=2, linestyle="-", label="Unit Test Line (Alpha)",alpha=0.5)
         plt.legend()
-        plt.title(f"Unit Test for Geometrical Fitting Engine\nLeft Noise Level = {noise_level_left}; Right Noise Level = {noise_level_right}; Phi Step Size = {phi_step_size}")
-        plt.ylabel("i index")
-        plt.xlabel("j index")
+        plt.title("Unit Test for Geometrical Fitting Engine",fontsize=16)
+        # plt.title(f"Unit Test for Geometrical Fitting Engine\nLeft Noise Level = {noise_level_left}; Right Noise Level = {noise_level_right}; Phi Step Size = {phi_step_size}")
+        plt.ylabel("i index (pixels)",fontsize=14)
+        plt.xlabel("j index (pixels)",fontsize=14)
         plt.show()
 
 
 if __name__ == '__main__':
 
+    # TestPlot(8,2).plot_energy_mats()
+
+    # Violin().r_cam_ellipseVSquad()
+
+
+    # Violin().ellipse_c_vals()
+
+    # saved_ellipse_gaussPlot(8)
+    # saved_ellipse_gaussPlot(11)
+
     # Violin().crys_pitch_ellipseVsQuad()
-    Violin().ellipse_error_c_vals()
+    # Violin().ellipse_error_c_vals()
 
     # TestPlot(8,2).plot_energy_mats()
 
@@ -2104,7 +2156,7 @@ if __name__ == '__main__':
 
     # geo_unit_test_tests()
 
-    # test_geo_fitting()
+    test_geo_fitting(plot_comparison=True)
 
     def calibrate_all(list_indices=list_good_data, folder_path="stored_variables"):
 

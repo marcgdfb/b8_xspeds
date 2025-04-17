@@ -377,7 +377,7 @@ if __name__ == '__main__':
         plt.show()
 
 
-    plot_two_matrices(array8Test,removeAnomaly(array8Test),)
+    # plot_two_matrices(array8Test,removeAnomaly(array8Test),)
 
     # plotRawMatThresholdedMat(1)
 
